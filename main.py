@@ -1,10 +1,11 @@
 import sys
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QLineEdit, QTreeWidget, QTreeWidgetItem,
-    QGraphicsView, QGraphicsScene, QGraphicsRectItem, QDockWidget, QGroupBox, QWidget
+    QGraphicsView, QGraphicsScene, QGraphicsRectItem, QDockWidget, QGroupBox, QWidget, QGraphicsEllipseItem
 )
 from PySide6.QtCore import Qt, QPointF
-from PySide6.QtGui import QColor, QBrush
+from PySide6.QtGui import QColor, QBrush, QWheelEvent, QTransform
+
 
 class DraggableRect(QGraphicsRectItem):
     def __init__(self, x, y, width, height, color):
@@ -20,7 +21,7 @@ class DraggableRect(QGraphicsRectItem):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("2D Plane with Interactive Objects")
+        self.setWindowTitle("Control Design Suit")
         self.resize(1080, 720)
 
         # Create a central widget with a vertical layout
@@ -30,10 +31,12 @@ class MainWindow(QMainWindow):
 
         # Graphics view and scene for the 2D plane
         self.scene = QGraphicsScene()
-        self.scene.setSceneRect(-500, -500, 1000, 1000)  # Set the scene size
+        self.scene.setSceneRect(-1000, -1000, 2000, 2000)  # Set the scene size
         self.view = QGraphicsView(self.scene)
         self.view.setRenderHint(self.view.renderHints())
         main_layout.addWidget(self.view)
+        self.create_dot_grid(spacing=20, dot_size=2, color=QColor(100, 100, 100))
+        self.view.setTransform(QTransform().scale(0.5, 0.5))
 
         # Create dock widget for the left sidebar
         dock_widget = QDockWidget("Options", self)
@@ -137,6 +140,34 @@ class MainWindow(QMainWindow):
                     match = True
 
             section.setExpanded(match)
+
+    def create_dot_grid(self, spacing, dot_size, color):
+        # Draw circles across the scene
+        for x in range(int(self.scene.sceneRect().left()), int(self.scene.sceneRect().right()), spacing):
+            for y in range(int(self.scene.sceneRect().top()), int(self.scene.sceneRect().bottom()), spacing):
+                # Alternate circle size based on the row (y coordinate)
+                current_dot_size = dot_size if (y // spacing) % 2 == 0 else dot_size * 2
+                # Create the circle, ensuring the size changes but the position stays the same
+                circle = QGraphicsEllipseItem(x - current_dot_size / 2,
+                                              y - current_dot_size / 2,
+                                              current_dot_size,
+                                              current_dot_size)
+                circle.setBrush(QBrush(color))
+                circle.setPen(Qt.NoPen)  # Remove outline
+                circle.setZValue(-1)  # Keep circles in the background
+                self.scene.addItem(circle)
+
+    def wheelEvent(self, event: QWheelEvent):
+        # Check if Ctrl key is held down for zooming
+        if event.modifiers() == Qt.ControlModifier:
+            angle = event.angleDelta().y()
+            scale_factor = 1.2 if angle > 0 else 1 / 1.2
+            current_transform = self.view.transform()
+            new_transform = current_transform.scale(scale_factor, scale_factor)
+            self.view.setTransform(new_transform)
+        else:
+            # Default behavior, scroll up/down
+            super().wheelEvent(event)
 
 
 # Main application setup
