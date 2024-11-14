@@ -3,8 +3,8 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QLineEdit, QTreeWidget, QTreeWidgetItem,
     QGraphicsView, QGraphicsScene, QGraphicsRectItem, QDockWidget, QGroupBox, QWidget, QGraphicsEllipseItem
 )
-from PySide6.QtCore import Qt, QPointF
-from PySide6.QtGui import QColor, QBrush, QWheelEvent, QTransform
+from PySide6.QtCore import Qt, QPointF, QEvent
+from PySide6.QtGui import QColor, QBrush, QWheelEvent, QTransform, QKeyEvent
 
 
 class DraggableRect(QGraphicsRectItem):
@@ -37,6 +37,12 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(self.view)
         self.create_dot_grid(spacing=20, dot_size=2, color=QColor(100, 100, 100))
         self.view.setTransform(QTransform().scale(0.5, 0.5))
+
+        # Initial scale factor
+        self.scale_factor = 1.0
+
+        # Enable mouse wheel event for scaling
+        self.view.viewport().installEventFilter(self)
 
         # Create dock widget for the left sidebar
         dock_widget = QDockWidget("Options", self)
@@ -157,17 +163,45 @@ class MainWindow(QMainWindow):
                 circle.setZValue(-1)  # Keep circles in the background
                 self.scene.addItem(circle)
 
-    def wheelEvent(self, event: QWheelEvent):
-        # Check if Ctrl key is held down for zooming
-        if event.modifiers() == Qt.ControlModifier:
-            angle = event.angleDelta().y()
-            scale_factor = 1.2 if angle > 0 else 1 / 1.2
-            current_transform = self.view.transform()
-            new_transform = current_transform.scale(scale_factor, scale_factor)
-            self.view.setTransform(new_transform)
-        else:
-            # Default behavior, scroll up/down
-            super().wheelEvent(event)
+    def get_viewport_scene_rect(self):
+        # Map the view's visible rectangle to the scene coordinates
+        view_rect = self.view.viewport().rect()
+        scene_rect = self.view.mapToScene(view_rect).boundingRect()
+        return scene_rect
+
+    def scale_view(self, scale_increment):
+        # Get the current visible area and its center
+        current_visible_area = self.get_viewport_scene_rect()
+        center = current_visible_area.center()
+
+        # Adjust the scale factor
+        self.scale_factor += scale_increment
+
+        # Apply scaling around the center point
+        transform = QTransform()
+        transform.translate(center.x(), center.y())
+        transform.scale(self.scale_factor, self.scale_factor)
+        transform.translate(-center.x(), -center.y())
+
+        # Apply the new transform to the view
+        self.view.setTransform(transform)
+
+    def eventFilter(self, source, event):
+        # Check if the event is a wheel event
+        if event.type() == QEvent.Wheel and source is self.view.viewport():
+            if QApplication.keyboardModifiers() == Qt.ControlModifier:
+                # Zoom in/out when Control is held
+                delta = event.angleDelta().y()
+                scale_increment = 0.1 if delta > 0 else -0.1
+                self.scale_view(scale_increment)
+                return True
+        return super().eventFilter(source, event)
+
+    def keyPressEvent(self, event: QKeyEvent):
+        # Delete selected items when the Delete key is pressed
+        if event.key() == Qt.Key_Delete:
+            for item in self.scene.selectedItems():
+                self.scene.removeItem(item)
 
 
 # Main application setup
