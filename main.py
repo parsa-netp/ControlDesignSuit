@@ -1,7 +1,7 @@
 import sys
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QLineEdit, QTreeWidget, QTreeWidgetItem,
-    QGraphicsView, QGraphicsScene, QGraphicsRectItem, QDockWidget, QGroupBox, QWidget, QGraphicsEllipseItem
+    QGraphicsView, QGraphicsScene, QGraphicsRectItem, QDockWidget, QGroupBox, QWidget, QGraphicsEllipseItem , QMenuBar, QMenu
 )
 from PySide6.QtCore import Qt, QPointF, QEvent
 from PySide6.QtGui import QColor, QBrush, QWheelEvent, QTransform, QKeyEvent
@@ -43,6 +43,9 @@ class MainWindow(QMainWindow):
 
         # Enable mouse wheel event for scaling
         self.view.viewport().installEventFilter(self)
+
+        # Create the top menu bar
+        self.create_menu_bar()
 
         # Create dock widget for the left sidebar
         dock_widget = QDockWidget("Options", self)
@@ -109,19 +112,31 @@ class MainWindow(QMainWindow):
             self.add_custom_shape()
 
     def add_rectangle(self):
-        # Add a draggable rectangle to the scene at a default position
-        rect = DraggableRect(0, 0, 100, 50, QColor("lightblue"))
+        # Get the center of the visible area
+        visible_area = self.get_viewport_scene_rect()
+        center = visible_area.center()
+
+        # Add a draggable rectangle to the scene at the center
+        rect = DraggableRect(center.x() - 50, center.y() - 25, 100, 50, QColor("lightblue"))
         self.scene.addItem(rect)
 
     def add_circle(self):
-        # Add a draggable circle (ellipse) to the scene
-        ellipse = DraggableRect(0, 0, 50, 50, QColor("lightgreen"))
-        ellipse.setRect(-25, -25, 50, 50)  # Center the ellipse at the origin
+        # Get the center of the visible area
+        visible_area = self.get_viewport_scene_rect()
+        center = visible_area.center()
+
+        # Add a draggable circle (ellipse) to the scene at the center
+        ellipse = DraggableRect(center.x() - 25, center.y() - 25, 50, 50, QColor("lightgreen"))
+        ellipse.setRect(-25, -25, 50, 50)  # Center the ellipse
         self.scene.addItem(ellipse)
 
     def add_custom_shape(self):
-        # You could define and add more complex custom shapes here
-        rect = DraggableRect(0, 0, 120, 60, QColor("lightcoral"))
+        # Get the center of the visible area
+        visible_area = self.get_viewport_scene_rect()
+        center = visible_area.center()
+
+        # Add a custom shape (rectangle for now) to the scene at the center
+        rect = DraggableRect(center.x() - 60, center.y() - 30, 120, 60, QColor("lightcoral"))
         self.scene.addItem(rect)
 
     def filter_tree(self, text):
@@ -202,6 +217,49 @@ class MainWindow(QMainWindow):
         if event.key() == Qt.Key_Delete:
             for item in self.scene.selectedItems():
                 self.scene.removeItem(item)
+
+    def create_menu_bar(self):
+        # Create the menu bar
+        menu_bar = QMenuBar(self)
+
+        # File menu
+        file_menu = QMenu("File", self)
+        file_menu.addAction("New", self.new_project)
+        file_menu.addAction("Open", self.open_project)
+        file_menu.addAction("Save", self.save_project)
+        file_menu.addSeparator()
+        file_menu.addAction("Exit", self.close)
+
+        # Edit menu
+        edit_menu = QMenu("Edit", self)
+        edit_menu.addAction("Undo")
+        edit_menu.addAction("Redo")
+        edit_menu.addSeparator()
+        edit_menu.addAction("Preferences")
+
+        # Help menu
+        help_menu = QMenu("Help", self)
+        help_menu.addAction("About", self.show_about_dialog)
+
+        # Add menus to the menu bar
+        menu_bar.addMenu(file_menu)
+        menu_bar.addMenu(edit_menu)
+        menu_bar.addMenu(help_menu)
+
+        # Set the menu bar for the main window
+        self.setMenuBar(menu_bar)
+
+    def new_project(self):
+        print("New project created!")
+
+    def open_project(self):
+        print("Open project dialog!")
+
+    def save_project(self):
+        print("Save project dialog!")
+
+    def show_about_dialog(self):
+        print("About dialog opened!")
 
 
 # Main application setup
