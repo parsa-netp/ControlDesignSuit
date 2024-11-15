@@ -4,18 +4,94 @@ from PySide6.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsRectItem, QDockWidget, QGroupBox, QWidget, QGraphicsEllipseItem , QMenuBar, QMenu
 )
 from PySide6.QtCore import Qt, QPointF, QEvent
-from PySide6.QtGui import QColor, QBrush, QWheelEvent, QTransform, QKeyEvent
+from PySide6.QtGui import QColor, QBrush, QTransform, QKeyEvent
+
 
 
 class DraggableRect(QGraphicsRectItem):
     def __init__(self, x, y, width, height, color):
         super().__init__(x, y, width, height)
         self.setBrush(QBrush(color))
-        self.setFlags(
-            QGraphicsRectItem.ItemIsMovable |
-            QGraphicsRectItem.ItemIsSelectable |
-            QGraphicsRectItem.ItemSendsGeometryChanges
-        )
+        self.setFlag(QGraphicsRectItem.ItemIsMovable)
+        self.setFlag(QGraphicsRectItem.ItemSendsGeometryChanges)
+
+    def itemChange(self, change, value):
+        if change == QGraphicsRectItem.ItemPositionChange:
+            # Update the scene with new position if needed
+            return value
+        return super().itemChange(change, value)
+
+
+class DraggableGraphicsView(QGraphicsView):
+    def __init__(self, scene):
+        super().__init__(scene)
+        self.setRenderHint(self.renderHints())
+        self.setDragMode(QGraphicsView.NoDrag)
+        self.is_dragging = False
+        self.last_pos = QPointF()
+
+        # Create the dot grid
+        self.create_dot_grid(spacing=20, dot_size=2, color=QColor(100, 100, 100))
+
+    def create_dot_grid(self, spacing, dot_size, color):
+        # Draw circles across the scene
+        for x in range(int(self.scene().sceneRect().left()), int(self.scene().sceneRect().right()), spacing):
+            for y in range(int(self.scene().sceneRect().top()), int(self.scene().sceneRect().bottom()), spacing):
+
+                if (y // spacing) % 2 == 0:
+                    # Halve the color intensity and use original dot size
+                    adjusted_color = QColor(
+                        color.red() // 2,
+                        color.green() // 2,
+                        color.blue() // 2
+                    )
+                    current_dot_size = dot_size
+                else:
+                    # Use the original color and double the dot size
+                    adjusted_color = color
+                    current_dot_size = dot_size * 2
+
+                # Create the circle, ensuring the size changes but the position stays the same
+                circle = QGraphicsEllipseItem(
+                    x - current_dot_size / 2,
+                    y - current_dot_size / 2,
+                    current_dot_size,
+                    current_dot_size
+                )
+
+                # Apply the modified or original color
+                circle.setBrush(QBrush(adjusted_color))
+                circle.setPen(Qt.NoPen)  # Remove outline
+                circle.setZValue(-1)  # Keep circles in the background
+                self.scene().addItem(circle)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            # Store the starting point of the drag
+            self.is_dragging = True
+            self.last_pos = event.position()
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self.is_dragging:
+            # Calculate the distance moved and translate the scene
+            delta = event.position() - self.last_pos
+            self.last_pos = event.position()
+
+            # Move the view (pan the scene)
+            self.translate_scene(delta)
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.is_dragging = False
+        super().mouseReleaseEvent(event)
+
+    def translate_scene(self, delta):
+        # Move the scene based on the mouse movement
+        self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - delta.x())
+        self.verticalScrollBar().setValue(self.verticalScrollBar().value() - delta.y())
+
 
 
 class MainWindow(QMainWindow):
@@ -32,10 +108,9 @@ class MainWindow(QMainWindow):
         # Graphics view and scene for the 2D plane
         self.scene = QGraphicsScene()
         self.scene.setSceneRect(-1000, -1000, 2000, 2000)  # Set the scene size
-        self.view = QGraphicsView(self.scene)
+        self.view = DraggableGraphicsView(self.scene)  # Use DraggableGraphicsView for panning
         self.view.setRenderHint(self.view.renderHints())
         main_layout.addWidget(self.view)
-        self.create_dot_grid(spacing=20, dot_size=2, color=QColor(100, 100, 100))
         self.view.setTransform(QTransform().scale(0.5, 0.5))
 
         # Initial scale factor
@@ -162,21 +237,6 @@ class MainWindow(QMainWindow):
 
             section.setExpanded(match)
 
-    def create_dot_grid(self, spacing, dot_size, color):
-        # Draw circles across the scene
-        for x in range(int(self.scene.sceneRect().left()), int(self.scene.sceneRect().right()), spacing):
-            for y in range(int(self.scene.sceneRect().top()), int(self.scene.sceneRect().bottom()), spacing):
-                # Alternate circle size based on the row (y coordinate)
-                current_dot_size = dot_size if (y // spacing) % 2 == 0 else dot_size * 2
-                # Create the circle, ensuring the size changes but the position stays the same
-                circle = QGraphicsEllipseItem(x - current_dot_size / 2,
-                                              y - current_dot_size / 2,
-                                              current_dot_size,
-                                              current_dot_size)
-                circle.setBrush(QBrush(color))
-                circle.setPen(Qt.NoPen)  # Remove outline
-                circle.setZValue(-1)  # Keep circles in the background
-                self.scene.addItem(circle)
 
     def get_viewport_scene_rect(self):
         # Map the view's visible rectangle to the scene coordinates
@@ -185,15 +245,14 @@ class MainWindow(QMainWindow):
         return scene_rect
 
     def scale_view(self, scale_increment):
-        # Get the current visible area and its center
-        current_visible_area = self.get_viewport_scene_rect()
-        center = current_visible_area.center()
-
-        # Adjust the scale factor
+        # Adjust the scale of the view
         self.scale_factor += scale_increment
-
-        # Apply scaling around the center point
+        self.scale_factor = max(0.1, self.scale_factor)  # Prevent too much scaling in or out
         transform = QTransform()
+        transform.scale(self.scale_factor, self.scale_factor)
+
+        # Get the center of the view and zoom towards it
+        center = self.view.mapToScene(self.view.viewport().rect().center())
         transform.translate(center.x(), center.y())
         transform.scale(self.scale_factor, self.scale_factor)
         transform.translate(-center.x(), -center.y())
