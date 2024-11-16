@@ -1,22 +1,39 @@
 import sys
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QLineEdit, QTreeWidget, QTreeWidgetItem,
-    QGraphicsView, QGraphicsScene, QGraphicsRectItem, QDockWidget, QGroupBox, QWidget, QGraphicsEllipseItem, QMenuBar, QMenu
+    QGraphicsView, QGraphicsScene, QGraphicsRectItem, QDockWidget, QGroupBox,
+    QWidget, QGraphicsEllipseItem, QMenuBar, QMenu, QGraphicsTextItem
 )
-from PySide6.QtCore import Qt, QPointF, QEvent
-from PySide6.QtGui import QColor, QBrush, QTransform, QKeyEvent
+from PySide6.QtCore import Qt, QPointF, QEvent,Signal
+from PySide6.QtGui import QColor, QBrush, QTransform, QKeyEvent,QFont
 
 
 class DraggableRect(QGraphicsRectItem):
-    def __init__(self, x, y, width, height, color):
+    def __init__(self, x, y, width, height, color, name):
         super().__init__(x, y, width, height)
         self.setBrush(QBrush(color))
-        self.setFlag(QGraphicsRectItem.ItemIsMovable |QGraphicsRectItem.ItemIsSelectable)
+        self.setFlag(QGraphicsRectItem.ItemIsMovable | QGraphicsRectItem.ItemIsSelectable)
         self.setFlag(QGraphicsRectItem.ItemSendsGeometryChanges)
+        # Store the name of the object
+        self.name = name
+
+        # Create the text item
+        self.text_item = QGraphicsTextItem(name, self)
+
+        # Set the position of the text (adjust as necessary)
+        self.text_item.setPos(x + 5, y + 5)  # Adjust the offset to place text inside the rect
+
+        # Set the font for the text item
+        font = QFont("Arial", 12)  # Example font: Arial, size 12
+        self.text_item.setFont(font)
+
+        # Optionally, set text color (for example, white)
+        self.text_item.setDefaultTextColor(QColor(0, 0, 0))
 
     def itemChange(self, change, value):
         if change == QGraphicsRectItem.ItemPositionChange:
-            # Update the scene with new position if needed
+            # Update the position of the text item to follow the rectangle
+            self.text_item.setPos(self.rect().topLeft() + QPointF(self.rect().width() / 4, self.rect().height() / 4))
             return value
         return super().itemChange(change, value)
 
@@ -205,39 +222,63 @@ class MainWindow(QMainWindow):
         # When a subsection is clicked, add a new shape to the scene
         text = item.text(0)
         if "Rectangle" in text:
-            self.add_rectangle()
+            self.add_rectangle(item)
         elif "Circle" in text:
-            self.add_circle()
+            self.add_circle(item)
         elif "Custom Shape" in text:
-            self.add_custom_shape()
+            self.add_custom_shape(item)
 
-    def add_rectangle(self):
+    def add_rectangle(self, item):
+        name = item.text(0)
         # Get the center of the visible area
         visible_area = self.get_viewport_scene_rect()
         center = visible_area.center()
 
         # Add a draggable rectangle to the scene at the center
-        rect = DraggableRect(center.x() - 50, center.y() - 25, 100, 50, QColor("lightblue"))
+        rect = DraggableRect(center.x() - 50, center.y() - 25, 100, 50, QColor("lightblue"), name)
         self.scene.addItem(rect)
 
-    def add_circle(self):
+        # Add a border around the rectangle
+        self.add_border(rect)
+
+    def add_circle(self, item):
+        name = item.text(0)
+
         # Get the center of the visible area
         visible_area = self.get_viewport_scene_rect()
         center = visible_area.center()
 
         # Add a draggable circle (ellipse) to the scene at the center
-        ellipse = DraggableRect(center.x() - 25, center.y() - 25, 50, 50, QColor("lightgreen"))
+        ellipse = DraggableRect(center.x() - 25, center.y() - 25, 50, 50, QColor("lightgreen"), name)
         ellipse.setRect(-25, -25, 50, 50)  # Center the ellipse
         self.scene.addItem(ellipse)
 
-    def add_custom_shape(self):
+        # Add a border around the ellipse
+        self.add_border(ellipse)
+
+    def add_custom_shape(self, item):
+        name = item.text(0)
+
         # Get the center of the visible area
         visible_area = self.get_viewport_scene_rect()
         center = visible_area.center()
 
         # Add a custom shape (rectangle for now) to the scene at the center
-        rect = DraggableRect(center.x() - 60, center.y() - 30, 120, 60, QColor("lightcoral"))
+        rect = DraggableRect(center.x() - 60, center.y() - 30, 120, 60, QColor("lightcoral"), name)
         self.scene.addItem(rect)
+
+        # Add a border around the custom shape
+        self.add_border(rect)
+
+    def add_border(self, item):
+        # Border around the item. We assume the item is a rectangle, adjust as necessary.
+        border_width = 10
+        border_item = QGraphicsRectItem(item)  # Create border item as a child of the shape
+        border_item.setPen(Qt.SolidLine)  # You can customize the border style
+        border_item.setBrush(Qt.transparent)  # No fill for the border
+        border_item.setRect(item.x() - border_width, item.y() - border_width,
+                            item.rect().width() + 2 * border_width, item.rect().height() + 2 * border_width)
+        self.scene.addItem(border_item)
 
     def filter_tree(self, text):
         # Filter tree items based on the search bar input
