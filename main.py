@@ -1,18 +1,17 @@
 import sys
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QLineEdit, QTreeWidget, QTreeWidgetItem,
-    QGraphicsView, QGraphicsScene, QGraphicsRectItem, QDockWidget, QGroupBox, QWidget, QGraphicsEllipseItem , QMenuBar, QMenu
+    QGraphicsView, QGraphicsScene, QGraphicsRectItem, QDockWidget, QGroupBox, QWidget, QGraphicsEllipseItem, QMenuBar, QMenu
 )
 from PySide6.QtCore import Qt, QPointF, QEvent
 from PySide6.QtGui import QColor, QBrush, QTransform, QKeyEvent
-
 
 
 class DraggableRect(QGraphicsRectItem):
     def __init__(self, x, y, width, height, color):
         super().__init__(x, y, width, height)
         self.setBrush(QBrush(color))
-        self.setFlag(QGraphicsRectItem.ItemIsMovable)
+        self.setFlag(QGraphicsRectItem.ItemIsMovable |QGraphicsRectItem.ItemIsSelectable)
         self.setFlag(QGraphicsRectItem.ItemSendsGeometryChanges)
 
     def itemChange(self, change, value):
@@ -27,19 +26,27 @@ class DraggableGraphicsView(QGraphicsView):
         super().__init__(scene)
         self.setRenderHint(self.renderHints())
         self.setDragMode(QGraphicsView.NoDrag)
-        self.is_dragging = False
-        self.last_pos = QPointF()
-
-        # Create the dot grid
+        self.setFocusPolicy(Qt.StrongFocus)  # Ensure the view can receive keyboard focus
+        self.setInteractive(True)  # Ensure the scene responds to mouse clicks
         self.create_dot_grid(spacing=20, dot_size=2, color=QColor(100, 100, 100))
 
+        # Initial scale factor
+        self.scale_factor = 1.0
+        self.viewport().installEventFilter(self)  # Enable mouse wheel zooming
+
+    def keyPressEvent(self, event: QKeyEvent):
+        if event.key() == Qt.Key_Delete:
+            selected_items = self.scene().selectedItems()
+            if selected_items:
+                for item in selected_items:
+                    self.scene().removeItem(item)
+        else:
+            super().keyPressEvent(event)
+
     def create_dot_grid(self, spacing, dot_size, color):
-        # Draw circles across the scene
         for x in range(int(self.scene().sceneRect().left()), int(self.scene().sceneRect().right()), spacing):
             for y in range(int(self.scene().sceneRect().top()), int(self.scene().sceneRect().bottom()), spacing):
-
                 if (y // spacing) % 2 == 0:
-                    # Halve the color intensity and use original dot size
                     adjusted_color = QColor(
                         color.red() // 2,
                         color.green() // 2,
@@ -47,51 +54,74 @@ class DraggableGraphicsView(QGraphicsView):
                     )
                     current_dot_size = dot_size
                 else:
-                    # Use the original color and double the dot size
                     adjusted_color = color
                     current_dot_size = dot_size * 2
 
-                # Create the circle, ensuring the size changes but the position stays the same
                 circle = QGraphicsEllipseItem(
                     x - current_dot_size / 2,
                     y - current_dot_size / 2,
                     current_dot_size,
                     current_dot_size
                 )
-
-                # Apply the modified or original color
                 circle.setBrush(QBrush(adjusted_color))
-                circle.setPen(Qt.NoPen)  # Remove outline
-                circle.setZValue(-1)  # Keep circles in the background
+                circle.setPen(Qt.NoPen)
+                circle.setZValue(-1)
                 self.scene().addItem(circle)
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            # Store the starting point of the drag
-            self.is_dragging = True
-            self.last_pos = event.position()
-        super().mousePressEvent(event)
+    def get_viewport_scene_rect(self):
+        view_rect = self.viewport().rect()
+        return self.mapToScene(view_rect).boundingRect()
 
-    def mouseMoveEvent(self, event):
-        if self.is_dragging:
-            # Calculate the distance moved and translate the scene
-            delta = event.position() - self.last_pos
-            self.last_pos = event.position()
+    def scale_view(self, scale_increment):
+        self.scale_factor += scale_increment
+        self.scale_factor = max(0.1, self.scale_factor)  # Prevent too much scaling in or out
+        transform = QTransform()
+        transform.scale(self.scale_factor, self.scale_factor)
+        center = self.mapToScene(self.viewport().rect().center())
+        self.setTransform(transform)
+        self.centerOn(center)
 
-            # Move the view (pan the scene)
-            self.translate_scene(delta)
-        super().mouseMoveEvent(event)
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Wheel and obj is self.viewport():
+            modifiers = QApplication.keyboardModifiers()
+            if modifiers & Qt.ControlModifier:
+                # Zoom when Control is pressed
+                delta = event.angleDelta().y() / 120
+                self.scale_view(delta * 0.1)
+            else:
+                # Allow normal vertical scrolling when Control is not pressed
+                self.verticalScrollBar().setValue(
+                    self.verticalScrollBar().value() - event.angleDelta().y()
+                )
+            return True
+        return super().eventFilter(obj, event)
 
-    def mouseReleaseEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.is_dragging = False
-        super().mouseReleaseEvent(event)
-
-    def translate_scene(self, delta):
-        # Move the scene based on the mouse movement
-        self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - delta.x())
-        self.verticalScrollBar().setValue(self.verticalScrollBar().value() - delta.y())
-
+    # def mousePressEvent(self, event):
+    #     if event.button() == Qt.LeftButton:
+    #         # Store the starting point of the drag
+    #         self.is_dragging = True
+    #         self.last_pos = event.position()
+    #     super().mousePressEvent(event)
+    #
+    # def mouseMoveEvent(self, event):
+    #     if self.is_dragging:
+    #         # Calculate the distance moved and translate the scene
+    #         delta = event.position() - self.last_pos
+    #         self.last_pos = event.position()
+    #
+    #         # Move the view (pan the scene)
+    #         self.translate_scene(delta)
+    #     super().mouseMoveEvent(event)
+    #
+    # def mouseReleaseEvent(self, event):
+    #     if event.button() == Qt.LeftButton:
+    #         self.is_dragging = False
+    #     super().mouseReleaseEvent(event)
+    #
+    # def translate_scene(self, delta):
+    #     # Move the scene based on the mouse movement
+    #     self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - delta.x())
+    #     self.verticalScrollBar().setValue(self.verticalScrollBar().value() - delta.y())
 
 
 class MainWindow(QMainWindow):
@@ -107,17 +137,12 @@ class MainWindow(QMainWindow):
 
         # Graphics view and scene for the 2D plane
         self.scene = QGraphicsScene()
-        self.scene.setSceneRect(-1000, -1000, 2000, 2000)  # Set the scene size
-        self.view = DraggableGraphicsView(self.scene)  # Use DraggableGraphicsView for panning
+        self.scene.setSceneRect(-1000, -1000, 2000, 2000)
+        self.view = DraggableGraphicsView(self.scene)
         self.view.setRenderHint(self.view.renderHints())
         main_layout.addWidget(self.view)
         self.view.setTransform(QTransform().scale(0.5, 0.5))
-
-        # Initial scale factor
-        self.scale_factor = 1.0
-
-        # Enable mouse wheel event for scaling
-        self.view.viewport().installEventFilter(self)
+        self.view.setFocus()
 
         # Create the top menu bar
         self.create_menu_bar()
@@ -176,7 +201,7 @@ class MainWindow(QMainWindow):
         # Expand all sections by default
         self.tree_widget.expandAll()
 
-    def on_item_clicked(self, item, column):
+    def on_item_clicked(self, item):
         # When a subsection is clicked, add a new shape to the scene
         text = item.text(0)
         if "Rectangle" in text:
@@ -237,92 +262,29 @@ class MainWindow(QMainWindow):
 
             section.setExpanded(match)
 
-
     def get_viewport_scene_rect(self):
         # Map the view's visible rectangle to the scene coordinates
         view_rect = self.view.viewport().rect()
         scene_rect = self.view.mapToScene(view_rect).boundingRect()
         return scene_rect
 
-    def scale_view(self, scale_increment):
-        # Adjust the scale of the view
-        self.scale_factor += scale_increment
-        self.scale_factor = max(0.1, self.scale_factor)  # Prevent too much scaling in or out
-        transform = QTransform()
-        transform.scale(self.scale_factor, self.scale_factor)
-
-        # Get the center of the view and zoom towards it
-        center = self.view.mapToScene(self.view.viewport().rect().center())
-        transform.translate(center.x(), center.y())
-        transform.scale(self.scale_factor, self.scale_factor)
-        transform.translate(-center.x(), -center.y())
-
-        # Apply the new transform to the view
-        self.view.setTransform(transform)
-
-    def eventFilter(self, source, event):
-        # Check if the event is a wheel event
-        if event.type() == QEvent.Wheel and source is self.view.viewport():
-            if QApplication.keyboardModifiers() == Qt.ControlModifier:
-                # Zoom in/out when Control is held
-                delta = event.angleDelta().y()
-                scale_increment = 0.1 if delta > 0 else -0.1
-                self.scale_view(scale_increment)
-                return True
-        return super().eventFilter(source, event)
-
-    def keyPressEvent(self, event: QKeyEvent):
-        # Delete selected items when the Delete key is pressed
-        if event.key() == Qt.Key_Delete:
-            for item in self.scene.selectedItems():
-                self.scene.removeItem(item)
-
     def create_menu_bar(self):
-        # Create the menu bar
+        # Create a top menu bar with options
         menu_bar = QMenuBar(self)
-
-        # File menu
-        file_menu = QMenu("File", self)
-        file_menu.addAction("New", self.new_project)
-        file_menu.addAction("Open", self.open_project)
-        file_menu.addAction("Save", self.save_project)
-        file_menu.addSeparator()
-        file_menu.addAction("Exit", self.close)
-
-        # Edit menu
-        edit_menu = QMenu("Edit", self)
-        edit_menu.addAction("Undo")
-        edit_menu.addAction("Redo")
-        edit_menu.addSeparator()
-        edit_menu.addAction("Preferences")
-
-        # Help menu
-        help_menu = QMenu("Help", self)
-        help_menu.addAction("About", self.show_about_dialog)
-
-        # Add menus to the menu bar
-        menu_bar.addMenu(file_menu)
-        menu_bar.addMenu(edit_menu)
-        menu_bar.addMenu(help_menu)
-
-        # Set the menu bar for the main window
         self.setMenuBar(menu_bar)
 
-    def new_project(self):
-        print("New project created!")
+        file_menu = QMenu("File", self)
+        menu_bar.addMenu(file_menu)
 
-    def open_project(self):
-        print("Open project dialog!")
+        edit_menu = QMenu("Edit", self)
+        menu_bar.addMenu(edit_menu)
 
-    def save_project(self):
-        print("Save project dialog!")
-
-    def show_about_dialog(self):
-        print("About dialog opened!")
+        view_menu = QMenu("View", self)
+        menu_bar.addMenu(view_menu)
 
 
-# Main application setup
-app = QApplication(sys.argv)
-window = MainWindow()
-window.show()
-sys.exit(app.exec())
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())
