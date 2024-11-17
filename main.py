@@ -2,43 +2,52 @@ import sys
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QLineEdit, QTreeWidget, QTreeWidgetItem,
     QGraphicsView, QGraphicsScene, QGraphicsRectItem, QDockWidget, QGroupBox,
-    QWidget, QGraphicsEllipseItem, QMenuBar, QMenu, QGraphicsTextItem
+    QWidget, QGraphicsEllipseItem, QMenuBar, QMenu, QGraphicsTextItem,
+    QMessageBox
 )
 from PySide6.QtCore import Qt, QPointF, QEvent,Signal
 from PySide6.QtGui import QColor, QBrush, QTransform, QKeyEvent,QFont
 
 
-class DraggableRect(QGraphicsRectItem):
+class ObjectHandler(QGraphicsRectItem):
     def __init__(self, x, y, width, height, color, name):
         super().__init__(x, y, width, height)
         self.setBrush(QBrush(color))
         self.setFlag(QGraphicsRectItem.ItemIsMovable | QGraphicsRectItem.ItemIsSelectable)
         self.setFlag(QGraphicsRectItem.ItemSendsGeometryChanges)
-        # Store the name of the object
+
+        # Create the text on object
         self.name = name
-
-        # Create the text item
         self.text_item = QGraphicsTextItem(name, self)
-
-        # Set the position of the text (adjust as necessary)
-        self.text_item.setPos(x + 5, y + 5)  # Adjust the offset to place text inside the rect
-
-        # Set the font for the text item
-        font = QFont("Arial", 12)  # Example font: Arial, size 12
+        self.text_item.setPos(x + 5, y + 5)
+        font = QFont("Arial", 12)
         self.text_item.setFont(font)
-
-        # Optionally, set text color (for example, white)
         self.text_item.setDefaultTextColor(QColor(0, 0, 0))
 
+        # Add a border around the rectangle
+        self.border = QGraphicsRectItem(self)
+        self.border.setPen(Qt.SolidLine)
+        self.border.setBrush(Qt.NoBrush)
+        self.update_border()
+
     def itemChange(self, change, value):
-        if change == QGraphicsRectItem.ItemPositionChange:
-            # Update the position of the text item to follow the rectangle
-            self.text_item.setPos(self.rect().topLeft() + QPointF(self.rect().width() / 4, self.rect().height() / 4))
-            return value
+        if change == QGraphicsRectItem.ItemPositionChange or change == QGraphicsRectItem.ItemTransformChange:
+            self.update_border()
         return super().itemChange(change, value)
 
+    def update_border(self):
+        # Update the border to match the rectangle's geometry
+        margin = 1  # Border width
+        self.border.setRect(
+            self.rect().x() - margin,
+            self.rect().y() - margin,
+            self.rect().width() + 2 * margin,
+            self.rect().height() + 2 * margin
+        )
 
-class DraggableGraphicsView(QGraphicsView):
+
+
+class PageHandler(QGraphicsView):
     def __init__(self, scene):
         super().__init__(scene)
         self.setRenderHint(self.renderHints())
@@ -113,6 +122,14 @@ class DraggableGraphicsView(QGraphicsView):
             return True
         return super().eventFilter(obj, event)
 
+    def get_objects_in_scene(self):
+        """Returns a list of names of all ObjectHandler items in the scene."""
+        objects = []
+        for item in self.scene().items():  # Iterate over all items in the scene
+            if isinstance(item, ObjectHandler):  # Check if the item is an ObjectHandler
+                objects.append(item.name)  # Add the item's name to the list
+        return objects
+
     # def mousePressEvent(self, event):
     #     if event.button() == Qt.LeftButton:
     #         # Store the starting point of the drag
@@ -155,7 +172,7 @@ class MainWindow(QMainWindow):
         # Graphics view and scene for the 2D plane
         self.scene = QGraphicsScene()
         self.scene.setSceneRect(-1000, -1000, 2000, 2000)
-        self.view = DraggableGraphicsView(self.scene)
+        self.view = PageHandler(self.scene)
         self.view.setRenderHint(self.view.renderHints())
         main_layout.addWidget(self.view)
         self.view.setTransform(QTransform().scale(0.5, 0.5))
@@ -235,11 +252,8 @@ class MainWindow(QMainWindow):
         center = visible_area.center()
 
         # Add a draggable rectangle to the scene at the center
-        rect = DraggableRect(center.x() - 50, center.y() - 25, 100, 50, QColor("lightblue"), name)
+        rect = ObjectHandler(center.x() - 50, center.y() - 25, 100, 50, QColor("lightblue"), name)
         self.scene.addItem(rect)
-
-        # Add a border around the rectangle
-        self.add_border(rect)
 
     def add_circle(self, item):
         name = item.text(0)
@@ -249,12 +263,11 @@ class MainWindow(QMainWindow):
         center = visible_area.center()
 
         # Add a draggable circle (ellipse) to the scene at the center
-        ellipse = DraggableRect(center.x() - 25, center.y() - 25, 50, 50, QColor("lightgreen"), name)
+        ellipse = ObjectHandler(center.x() - 25, center.y() - 25, 50, 50, QColor("lightgreen"), name)
         ellipse.setRect(-25, -25, 50, 50)  # Center the ellipse
         self.scene.addItem(ellipse)
 
-        # Add a border around the ellipse
-        self.add_border(ellipse)
+
 
     def add_custom_shape(self, item):
         name = item.text(0)
@@ -264,21 +277,10 @@ class MainWindow(QMainWindow):
         center = visible_area.center()
 
         # Add a custom shape (rectangle for now) to the scene at the center
-        rect = DraggableRect(center.x() - 60, center.y() - 30, 120, 60, QColor("lightcoral"), name)
+        rect = ObjectHandler(center.x() - 60, center.y() - 30, 120, 60, QColor("lightcoral"), name)
         self.scene.addItem(rect)
 
-        # Add a border around the custom shape
-        self.add_border(rect)
 
-    def add_border(self, item):
-        # Border around the item. We assume the item is a rectangle, adjust as necessary.
-        border_width = 10
-        border_item = QGraphicsRectItem(item)  # Create border item as a child of the shape
-        border_item.setPen(Qt.SolidLine)  # You can customize the border style
-        border_item.setBrush(Qt.transparent)  # No fill for the border
-        border_item.setRect(item.x() - border_width, item.y() - border_width,
-                            item.rect().width() + 2 * border_width, item.rect().height() + 2 * border_width)
-        self.scene.addItem(border_item)
 
     def filter_tree(self, text):
         # Filter tree items based on the search bar input
@@ -323,6 +325,29 @@ class MainWindow(QMainWindow):
         view_menu = QMenu("View", self)
         menu_bar.addMenu(view_menu)
 
+        object_menu = QMenu("Objects", self)
+        menu_bar.addMenu(object_menu)
+
+        show_objects_action = object_menu.addAction("Show Objects Info")
+        show_objects_action.triggered.connect(self.show_objects_info)
+
+    def show_objects_info(self):
+        # Retrieve object information from the scene
+        object_info = []
+        for item in self.view.scene().items():  # Iterate over all items in the scene
+            if isinstance(item, ObjectHandler):  # Check if the item is an ObjectHandler
+                name = item.name
+                position = item.pos()  # Get the position of the object in the scene
+                object_info.append(f"{name} at ({position.x():.2f}, {position.y():.2f})")
+
+        # Format the object information
+        if object_info:
+            message = "Objects in the scene:\n" + "\n".join(object_info)
+        else:
+            message = "No objects in the scene."
+
+        # Display the information in a message box
+        QMessageBox.information(self, "Scene Objects", message)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
