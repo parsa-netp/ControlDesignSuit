@@ -157,6 +157,30 @@ class PageHandler(QGraphicsView):
     #     self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - delta.x())
     #     self.verticalScrollBar().setValue(self.verticalScrollBar().value() - delta.y())
 
+    class SceneItemManager:
+        def __init__(self, scene):
+            self.scene = scene
+
+        def get_items(self):
+            """Return all items in the scene."""
+            return self.scene.items()
+
+        def get_object_handlers(self):
+            """Return all items that are instances of ObjectHandler."""
+            return [item for item in self.get_items() if isinstance(item, ObjectHandler)]
+
+        def get_object_positions(self):
+            """
+            Return a list of tuples containing the names and positions of all ObjectHandler items.
+            Each tuple contains (name, x, y).
+            """
+            positions = []
+            for item in self.get_object_handlers():
+                name = item.name
+                position = item.pos()  # Get the position of the object
+                positions.append((name, position.x(), position.y()))
+            return positions
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
