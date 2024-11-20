@@ -1,6 +1,6 @@
-from PySide6.QtWidgets import (QApplication,QGraphicsView,QGraphicsEllipseItem)
+from PySide6.QtWidgets import (QApplication,QGraphicsView,QGraphicsEllipseItem,QGraphicsLineItem)
 from PySide6.QtCore import (Qt, QEvent)
-from PySide6.QtGui import (QColor, QBrush, QTransform, QKeyEvent)
+from PySide6.QtGui import (QColor, QBrush, QTransform, QKeyEvent,QMouseEvent,QPen)
 
 import ObjectHandler
 
@@ -17,14 +17,9 @@ class PageHandler(QGraphicsView):
         self.scale_factor = 1.0
         self.viewport().installEventFilter(self)  # Enable mouse wheel zooming
 
-    def keyPressEvent(self, event: QKeyEvent):
-        if event.key() == Qt.Key_Delete:
-            selected_items = self.scene().selectedItems()
-            if selected_items:
-                for item in selected_items:
-                    self.scene().removeItem(item)
-        else:
-            super().keyPressEvent(event)
+        # Variables for line drawing
+        self.start_point = None
+        self.temp_line = None  # Temporary line displayed during mouse movement
 
     def create_dot_grid(self, spacing, dot_size, color):
         for x in range(int(self.scene().sceneRect().left()), int(self.scene().sceneRect().right()), spacing):
@@ -64,6 +59,74 @@ class PageHandler(QGraphicsView):
         self.setTransform(transform)
         self.centerOn(center)
 
+
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.LeftButton:
+            # Get the position in scene coordinates
+            scene_pos = self.mapToScene(event.pos())
+
+            # Check if there is an item at the clicked position
+            clicked_item = self.scene().itemAt(scene_pos, self.transform())
+            if isinstance(clicked_item, ObjectHandler.ObjectHandler):
+                # If clicked on an object, let the object handle its interaction (e.g., moving)
+                super().mousePressEvent(event)
+                return
+
+            # Start the line-drawing process
+            self.start_point = scene_pos
+            self.temp_line = QGraphicsLineItem()
+            self.temp_line.setPen(QPen(QColor(0, 0, 255), 2, Qt.DashLine))  # Dashed blue line
+            self.scene().addItem(self.temp_line)
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if self.start_point and self.temp_line:
+            # Update the temporary line to follow the mouse position
+            current_point = self.mapToScene(event.pos())
+            self.temp_line.setLine(
+                self.start_point.x(),
+                self.start_point.y(),
+                current_point.x(),
+                current_point.y(),
+            )
+        else:
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        if event.button() == Qt.LeftButton and self.start_point:
+            # Get the ending position in scene coordinates
+            end_point = self.mapToScene(event.pos())
+
+            # Check if the release point is on an object; if so, skip line drawing
+            released_item = self.scene().itemAt(end_point, self.transform())
+            if isinstance(released_item, ObjectHandler.ObjectHandler):
+                # Remove the temporary line if it exists
+                if self.temp_line:
+                    self.scene().removeItem(self.temp_line)
+                    self.temp_line = None
+                self.start_point = None
+                return
+
+            # Add a permanent line to the scene
+            permanent_line = QGraphicsLineItem(
+                self.start_point.x(),
+                self.start_point.y(),
+                end_point.x(),
+                end_point.y(),
+            )
+            permanent_line.setPen(QPen(QColor(255, 0, 0), 2))  # Solid red line
+            self.scene().addItem(permanent_line)
+
+            # Clean up the temporary line and starting point
+            if self.temp_line:
+                self.scene().removeItem(self.temp_line)
+                self.temp_line = None
+            self.start_point = None
+        else:
+            super().mouseReleaseEvent(event)
+
+
     def eventFilter(self, obj, event):
         if event.type() == QEvent.Wheel and obj is self.viewport():
             modifiers = QApplication.keyboardModifiers()
@@ -79,10 +142,12 @@ class PageHandler(QGraphicsView):
             return True
         return super().eventFilter(obj, event)
 
-    def get_objects_in_scene(self):
-        """Returns a list of names of all ObjectHandler items in the scene."""
-        objects = []
-        for item in self.scene().items():  # Iterate over all items in the scene
-            if isinstance(item, ObjectHandler.ObjectHandler):  # Check if the item is an ObjectHandler
-                objects.append(item.name)  # Add the item's name to the list
-        return objects
+
+    def keyPressEvent(self, event: QKeyEvent):
+        if event.key() == Qt.Key_Delete:
+            selected_items = self.scene().selectedItems()
+            if selected_items:
+                for item in selected_items:
+                    self.scene().removeItem(item)
+        else:
+            super().keyPressEvent(event)

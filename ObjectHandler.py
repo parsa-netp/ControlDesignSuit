@@ -1,39 +1,39 @@
 from PySide6.QtWidgets import ( QGraphicsRectItem, QGraphicsTextItem)
-from PySide6.QtGui import QColor, QBrush,QFont
+from PySide6.QtGui import QColor, QBrush,QFont,QPen
 
-import BorderHandler
 
 class ObjectHandler(QGraphicsRectItem):
     def __init__(self, x, y, width, height, color, name):
         super().__init__(x, y, width, height)
-        self.setBrush(QBrush(color))  # Set the object's color
+
+        self.normal_color = color  # Store the normal color
+        self.highlight_color = QColor(255, 255, 0, 128)  # Highlight color (semi-transparent yellow)
+        self.border_color = QColor(0, 0, 0)  # Default border color
+        self.highlight_border_color = QColor(0, 0, 255)  # Highlighted border color (blue)
+
+        self.setBrush(QBrush(self.normal_color))  # Set the object's initial color
+        self.setPen(QPen(self.border_color, 2))  # Set the initial border
         self.setFlag(QGraphicsRectItem.ItemIsMovable | QGraphicsRectItem.ItemIsSelectable)
         self.setFlag(QGraphicsRectItem.ItemSendsGeometryChanges)
 
-        # Store the name of the object
-        self.name = name
+        self.setPen(QPen(self.border_color, 2))  # Revert to the normal border
+        self.setPen(QPen(self.highlight_border_color, 3))  # Change border to highlighted
 
-        # Create and position the text label
+        self.setAcceptHoverEvents(True)  # Enable hover events
+
+        self.name = name
         self.text_item = QGraphicsTextItem(name, self)
         self.text_item.setPos(5, 5)  # Position relative to the object
         font = QFont("Arial", 12)
         self.text_item.setFont(font)
         self.text_item.setDefaultTextColor(QColor(0, 0, 0))
 
-        # Initialize the border (added after the object is added to a scene)
-        self.border = None
-        self.setZValue(1)  # Ensure the object is in front of the border
+    def hoverEnterEvent(self, event):
+        """Change the object's appearance when the mouse hovers over it."""
+        self.setBrush(QBrush(self.highlight_color))  # Apply the highlight color
+        super().hoverEnterEvent(event)
 
-    def add_border(self):
-        """Create and add the border to the scene after this item is added to the scene."""
-        if not self.scene():
-            raise RuntimeError("ObjectHandler must be added to a scene before adding a border.")
-        self.border = BorderHandler.BorderHandler(self)
-        self.scene().addItem(self.border)
-
-    def itemChange(self, change, value):
-        """Update the border's geometry when the object is moved or transformed."""
-        if change in {QGraphicsRectItem.ItemPositionChange, QGraphicsRectItem.ItemTransformChange}:
-            if self.border:
-                self.border.update_geometry()
-        return super().itemChange(change, value)
+    def hoverLeaveEvent(self, event):
+        """Revert the object's appearance when the mouse leaves it."""
+        self.setBrush(QBrush(self.normal_color))  # Revert to the normal color
+        super().hoverLeaveEvent(event)

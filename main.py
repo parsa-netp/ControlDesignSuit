@@ -1,7 +1,7 @@
 import sys
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QLineEdit, QTreeWidget, QTreeWidgetItem,
-    QGraphicsScene, QDockWidget, QGroupBox,QWidget, QMenuBar,QMenu,QMessageBox
+    QGraphicsScene, QDockWidget, QGroupBox,QWidget, QMenuBar,QMenu,QMessageBox ,QPushButton
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QTransform
@@ -9,31 +9,6 @@ from PySide6.QtGui import QColor, QTransform
 import PageHandler
 import ObjectHandler
 
-
-
-class SceneItemManager:
-    def __init__(self, scene):
-        self.scene = scene
-
-    def get_items(self):
-        """Return all items in the scene."""
-        return self.scene.items()
-
-    def get_object_handlers(self):
-        """Return all items that are instances of ObjectHandler."""
-        return [item for item in self.get_items() if isinstance(item, ObjectHandler.ObjectHandler)]
-
-    def get_object_positions(self):
-        """
-        Return a list of tuples containing the names and positions of all ObjectHandler items.
-        Each tuple contains (name, x, y).
-        """
-        positions = []
-        for item in self.get_object_handlers():
-            name = item.name
-            position = item.pos()  # Get the position of the object
-            positions.append((name, position.x(), position.y()))
-        return positions
 
 
 class MainWindow(QMainWindow):
@@ -52,6 +27,7 @@ class MainWindow(QMainWindow):
         self.scene.setSceneRect(-1000, -1000, 2000, 2000)
         self.view = PageHandler.PageHandler(self.scene)
         self.view.setRenderHint(self.view.renderHints())
+
         main_layout.addWidget(self.view)
         self.view.setTransform(QTransform().scale(0.5, 0.5))
         self.view.setFocus()
@@ -133,9 +109,6 @@ class MainWindow(QMainWindow):
         rect = ObjectHandler.ObjectHandler(center.x() - 50, center.y() - 25, 100, 50, QColor("lightblue"), name)
         self.scene.addItem(rect)
 
-        # Add its border
-        rect.add_border()
-
     def add_circle(self, item):
         name = item.text(0)
 
@@ -147,9 +120,6 @@ class MainWindow(QMainWindow):
         ellipse = ObjectHandler.ObjectHandler(center.x() - 25, center.y() - 25, 50, 50, QColor("lightgreen"), name)
         ellipse.setRect(-25, -25, 50, 50)  # Center the ellipse
         self.scene.addItem(ellipse)
-
-        ellipse.add_border()
-
 
 
 
@@ -163,8 +133,6 @@ class MainWindow(QMainWindow):
         # Add a custom shape (rectangle for now) to the scene at the center
         rect = ObjectHandler.ObjectHandler(center.x() - 60, center.y() - 30, 120, 60, QColor("lightcoral"), name)
         self.scene.addItem(rect)
-
-        rect.add_border()
 
 
 
