@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QGraphicsLineItem
 from PySide6.QtGui import QPen, QColor, QMouseEvent
 from PySide6.QtCore import Qt
-import ObjectHandler
+
 
 
 class TarHandler(QGraphicsLineItem):

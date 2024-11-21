@@ -1,4 +1,8 @@
+
+
 import sys
+sys.path.append(r'D:\Develop\Python\Pycharm\ControlDesignSuit\Handlers')
+
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QLineEdit, QTreeWidget, QTreeWidgetItem,
     QGraphicsScene, QDockWidget, QGroupBox,QWidget, QMenuBar,QMenu,QMessageBox ,QPushButton
@@ -6,16 +10,17 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QTransform
 
-import PageHandler
-import ObjectHandler
-import  TarHandler
+
+from Handlers.PageHandler import PageHandler
+from Handlers.ObjectHandler import  ObjectHandler
+from Handlers.TarHandler import TarHandler
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Control Design Suit")
-        self.resize(1080, 720)
+        self.resize(1920 , 1080)
 
         # Create a central widget with a vertical layout
         central_widget = QWidget()
@@ -25,7 +30,7 @@ class MainWindow(QMainWindow):
         # Graphics view and scene for the 2D plane
         self.scene = QGraphicsScene()
         self.scene.setSceneRect(-1000, -1000, 2000, 2000)
-        self.view = PageHandler.PageHandler(self.scene)
+        self.view = PageHandler(self.scene)
         self.view.setRenderHint(self.view.renderHints())
 
         main_layout.addWidget(self.view)
@@ -106,7 +111,7 @@ class MainWindow(QMainWindow):
         center = visible_area.center()
 
         # Add a draggable rectangle to the scene at the center
-        rect = ObjectHandler.ObjectHandler(center.x() - 50, center.y() - 25, 100, 50, QColor("lightblue"), name)
+        rect = ObjectHandler(center.x() - 50, center.y() - 25, 100, 50, QColor("lightblue"), name)
         self.scene.addItem(rect)
 
     def add_circle(self, item):
@@ -117,7 +122,7 @@ class MainWindow(QMainWindow):
         center = visible_area.center()
 
         # Add a draggable circle (ellipse) to the scene at the center
-        ellipse = ObjectHandler.ObjectHandler(center.x() - 25, center.y() - 25, 50, 50, QColor("lightgreen"), name)
+        ellipse = ObjectHandler(center.x() - 25, center.y() - 25, 50, 50, QColor("lightgreen"), name)
         ellipse.setRect(-25, -25, 50, 50)  # Center the ellipse
         self.scene.addItem(ellipse)
 
@@ -131,8 +136,10 @@ class MainWindow(QMainWindow):
         center = visible_area.center()
 
         # Add a custom shape (rectangle for now) to the scene at the center
-        rect = ObjectHandler.ObjectHandler(center.x() - 60, center.y() - 30, 120, 60, QColor("lightcoral"), name)
+        rect = ObjectHandler(center.x() - 60, center.y() - 30, 120, 60, QColor("lightcoral"), name)
         self.scene.addItem(rect)
+
+
 
 
     def filter_tree(self, text):
@@ -158,11 +165,15 @@ class MainWindow(QMainWindow):
 
             section.setExpanded(match)
 
+
+
     def get_viewport_scene_rect(self):
         # Map the view's visible rectangle to the scene coordinates
         view_rect = self.view.viewport().rect()
         scene_rect = self.view.mapToScene(view_rect).boundingRect()
         return scene_rect
+
+
 
     def create_menu_bar(self):
         # Create a top menu bar with options
@@ -184,6 +195,8 @@ class MainWindow(QMainWindow):
         show_objects_action = object_menu.addAction("Show Objects Info")
         show_objects_action.triggered.connect(self.show_objects_info)
 
+
+
     def show_objects_info(self):
         # Retrieve object information from the scene
         object_info = []
@@ -191,11 +204,11 @@ class MainWindow(QMainWindow):
 
         # Iterate over all items in the scene, sorted by their Z-value
         for item in sorted(self.view.scene().items(), key=lambda i: i.zValue()):
-            if isinstance(item, ObjectHandler.ObjectHandler):
+            if isinstance(item, ObjectHandler):
                 name = item.name
                 position = item.scenePos()
                 object_info.append(f"{name} at ({position.x():.2f}, {position.y():.2f})")
-            elif isinstance(item, TarHandler.TarHandler):
+            elif isinstance(item, TarHandler):
                 start = item.start_point
                 end = item.end_point
                 line_info.append(f"Line from ({start.x():.2f}, {start.y():.2f}) to ({end.x():.2f}, {end.y():.2f})")

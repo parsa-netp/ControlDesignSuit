@@ -2,8 +2,8 @@ from PySide6.QtWidgets import (QApplication,QGraphicsView,QGraphicsEllipseItem,Q
 from PySide6.QtCore import (Qt, QEvent)
 from PySide6.QtGui import (QColor, QBrush, QTransform, QKeyEvent,QMouseEvent,QPen)
 
-import ObjectHandler
-import TarHandler
+from Handlers.ObjectHandler import  ObjectHandler
+from Handlers.TarHandler import TarHandler
 
 class PageHandler(QGraphicsView):
     def __init__(self, scene):
@@ -91,7 +91,7 @@ class PageHandler(QGraphicsView):
 
             # Check if there is an item at the clicked position
             clicked_item = self.scene().itemAt(scene_pos, self.transform())
-            if isinstance(clicked_item, (ObjectHandler.ObjectHandler, TarHandler.TarHandler)):
+            if isinstance(clicked_item, (ObjectHandler, TarHandler)):
                 # Let the clicked object handle its interaction
                 super().mousePressEvent(event)
                 return
@@ -124,7 +124,7 @@ class PageHandler(QGraphicsView):
 
             # Check if the release point is on an existing item; if so, skip creating a new line
             released_item = self.scene().itemAt(end_point, self.transform())
-            if isinstance(released_item, (ObjectHandler.ObjectHandler, TarHandler.TarHandler)):
+            if isinstance(released_item, (ObjectHandler, TarHandler)):
                 # Remove the temporary line if it exists
                 if self.temp_line:
                     self.scene().removeItem(self.temp_line)
@@ -133,7 +133,7 @@ class PageHandler(QGraphicsView):
                 return
 
             # Add a permanent line to the scene
-            permanent_line = TarHandler.TarHandler(self.start_point, end_point)
+            permanent_line = TarHandler(self.start_point, end_point)
             self.scene().addItem(permanent_line)
 
             # Clean up the temporary line and starting point
