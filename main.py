@@ -8,7 +8,7 @@ from PySide6.QtGui import QColor, QTransform
 
 import PageHandler
 import ObjectHandler
-
+import  TarHandler
 
 
 class MainWindow(QMainWindow):
@@ -135,7 +135,6 @@ class MainWindow(QMainWindow):
         self.scene.addItem(rect)
 
 
-
     def filter_tree(self, text):
         # Filter tree items based on the search bar input
         text = text.lower()
@@ -188,20 +187,34 @@ class MainWindow(QMainWindow):
     def show_objects_info(self):
         # Retrieve object information from the scene
         object_info = []
-        for item in self.view.scene().items():  # Iterate over all items in the scene
-            if isinstance(item, ObjectHandler.ObjectHandler):  # Check if the item is an ObjectHandler
-                name = item.name
-                position = item.pos()  # Get the position of the object in the scene
-                object_info.append(f"{name} at ({position.x():.2f}, {position.y():.2f})")
+        line_info = []
 
-        # Format the object information
+        # Iterate over all items in the scene, sorted by their Z-value
+        for item in sorted(self.view.scene().items(), key=lambda i: i.zValue()):
+            if isinstance(item, ObjectHandler.ObjectHandler):
+                name = item.name
+                position = item.scenePos()
+                object_info.append(f"{name} at ({position.x():.2f}, {position.y():.2f})")
+            elif isinstance(item, TarHandler.TarHandler):
+                start = item.start_point
+                end = item.end_point
+                line_info.append(f"Line from ({start.x():.2f}, {start.y():.2f}) to ({end.x():.2f}, {end.y():.2f})")
+
+        # Combine the information
+        info = []
         if object_info:
-            message = "Objects in the scene:\n" + "\n".join(object_info)
-        else:
-            message = "No objects in the scene."
+            info.append("Objects in the scene:")
+            info.extend(object_info)
+        if line_info:
+            info.append("Lines in the scene:")
+            info.extend(line_info)
+
+        # Format the message
+        message = "\n".join(info) if info else "No objects or lines in the scene."
 
         # Display the information in a message box
-        QMessageBox.information(self, "Scene Objects", message)
+        QMessageBox.information(self, "Scene Items", message)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
