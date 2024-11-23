@@ -5,15 +5,8 @@ from PySide6.QtCore import Qt
 
 
 class TarHandler(QGraphicsLineItem):
-    def __init__(self, start_point, end_point, color=QColor(255, 0, 0), thickness=3):
-        """
-        A custom line class that extends QGraphicsLineItem with hover and selection support.
+    def __init__(self, start_point, end_point, color=QColor(255, 0, 0), thickness=5):
 
-        :param start_point: QPointF - The starting point of the line.
-        :param end_point: QPointF - The ending point of the line.
-        :param color: QColor - The color of the line.
-        :param thickness: int - The thickness of the line.
-        """
         super().__init__(start_point.x(), start_point.y(), end_point.x(), end_point.y())
         self.normal_color = color  # Default line color
         self.highlight_color = QColor(255, 255, 0)  # Highlight color (yellow)
@@ -49,4 +42,3 @@ class TarHandler(QGraphicsLineItem):
             super().mousePressEvent(event)
 
 
-# Additional functionality for managing line creation can be handled in your view or scene.

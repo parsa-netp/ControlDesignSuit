@@ -1,11 +1,9 @@
-
-
 import sys
 sys.path.append(r'D:\Develop\Python\Pycharm\ControlDesignSuit\Handlers')
 
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QLineEdit, QTreeWidget, QTreeWidgetItem,
-    QGraphicsScene, QDockWidget, QGroupBox,QWidget, QMenuBar,QMenu,QMessageBox ,QPushButton
+    QApplication, QMainWindow, QVBoxLayout, QTreeWidget, QTreeWidgetItem
+  , QDockWidget, QGroupBox,QWidget, QMenuBar,QMenu,QMessageBox
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QTransform
@@ -28,10 +26,8 @@ class MainWindow(QMainWindow):
         main_layout = QVBoxLayout(central_widget)
 
         # Graphics view and scene for the 2D plane
-        self.scene = QGraphicsScene()
-        self.scene.setSceneRect(-1000, -1000, 2000, 2000)
-        self.view = PageHandler(self.scene)
-        self.view.setRenderHint(self.view.renderHints())
+
+        self.view = PageHandler()
 
         main_layout.addWidget(self.view)
         self.view.setTransform(QTransform().scale(0.5, 0.5))
@@ -48,12 +44,6 @@ class MainWindow(QMainWindow):
         # Create a sidebar widget with layout
         sidebar_widget = QGroupBox()
         sidebar_layout = QVBoxLayout(sidebar_widget)
-
-        # Search bar at the top
-        self.search_bar = QLineEdit()
-        self.search_bar.setPlaceholderText("Search...")
-        self.search_bar.textChanged.connect(self.filter_tree)
-        sidebar_layout.addWidget(self.search_bar)
 
         # Tree widget for sections and subsections
         self.tree_widget = QTreeWidget()
@@ -106,74 +96,36 @@ class MainWindow(QMainWindow):
 
     def add_rectangle(self, item):
         name = item.text(0)
-        # Get the center of the visible area
         visible_area = self.get_viewport_scene_rect()
         center = visible_area.center()
 
-        # Add a draggable rectangle to the scene at the center
         rect = ObjectHandler(center.x() - 50, center.y() - 25, 100, 50, QColor("lightblue"), name)
-        self.scene.addItem(rect)
+        self.view.scene.addItem(rect)
 
     def add_circle(self, item):
         name = item.text(0)
 
-        # Get the center of the visible area
         visible_area = self.get_viewport_scene_rect()
         center = visible_area.center()
 
-        # Add a draggable circle (ellipse) to the scene at the center
         ellipse = ObjectHandler(center.x() - 25, center.y() - 25, 50, 50, QColor("lightgreen"), name)
         ellipse.setRect(-25, -25, 50, 50)  # Center the ellipse
-        self.scene.addItem(ellipse)
-
-
+        self.view.scene.addItem(ellipse)
 
     def add_custom_shape(self, item):
         name = item.text(0)
 
-        # Get the center of the visible area
         visible_area = self.get_viewport_scene_rect()
         center = visible_area.center()
 
-        # Add a custom shape (rectangle for now) to the scene at the center
         rect = ObjectHandler(center.x() - 60, center.y() - 30, 120, 60, QColor("lightcoral"), name)
-        self.scene.addItem(rect)
-
-
-
-
-    def filter_tree(self, text):
-        # Filter tree items based on the search bar input
-        text = text.lower()
-        for i in range(self.tree_widget.topLevelItemCount()):
-            section = self.tree_widget.topLevelItem(i)
-            section.setHidden(True)
-            match = False
-
-            if text in section.text(0).lower():
-                section.setHidden(False)
-                match = True
-
-            for j in range(section.childCount()):
-                subsection = section.child(j)
-                subsection.setHidden(True)
-
-                if text in subsection.text(0).lower():
-                    subsection.setHidden(False)
-                    section.setHidden(False)
-                    match = True
-
-            section.setExpanded(match)
-
-
+        self.view.scene.addItem(rect)
 
     def get_viewport_scene_rect(self):
         # Map the view's visible rectangle to the scene coordinates
         view_rect = self.view.viewport().rect()
         scene_rect = self.view.mapToScene(view_rect).boundingRect()
         return scene_rect
-
-
 
     def create_menu_bar(self):
         # Create a top menu bar with options
@@ -194,8 +146,6 @@ class MainWindow(QMainWindow):
 
         show_objects_action = object_menu.addAction("Show Objects Info")
         show_objects_action.triggered.connect(self.show_objects_info)
-
-
 
     def show_objects_info(self):
         # Retrieve object information from the scene
@@ -227,7 +177,6 @@ class MainWindow(QMainWindow):
 
         # Display the information in a message box
         QMessageBox.information(self, "Scene Items", message)
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
