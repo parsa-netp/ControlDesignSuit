@@ -1,13 +1,14 @@
 from PySide6.QtWidgets import (
-    QGraphicsRectItem, QGraphicsTextItem, QGraphicsItemGroup, QGraphicsSimpleTextItem
+    QGraphicsRectItem, QGraphicsTextItem
 )
 from PySide6.QtGui import QColor, QBrush, QFont, QPen, QMouseEvent
-from PySide6.QtCore import QPointF
 
 
 class ObjectHandler(QGraphicsRectItem):
-    def __init__(self, x, y, width, height, color, name):
+    def __init__(self, x, y, width, height, color, name,main_window):
         super().__init__(x, y, width, height)
+
+        self.main_window = main_window
 
         # Set initial colors and other properties
         self.normal_color = color
@@ -42,40 +43,15 @@ class ObjectHandler(QGraphicsRectItem):
         super().hoverLeaveEvent(event)
 
     def mouseDoubleClickEvent(self, event: QMouseEvent):
-        """Show the menu below the object on double-click."""
-        if self.menu_group:
-            # If the menu already exists, remove it first
-            if self.scene():
-                self.scene().removeItem(self.menu_group)
-            self.menu_group = None  # Clear the menu group
-
-        # Create the menu as a QGraphicsItemGroup
-        self.menu_group = QGraphicsItemGroup()
-
-        # Menu background (a simple rectangle)
-        menu_rect = QGraphicsRectItem(0, 0, 120, 60, self.menu_group)
-        menu_rect.setBrush(QBrush(QColor(220, 220, 220)))  # Light gray background
-        menu_rect.setPen(QPen(QColor(100, 100, 100), 1))  # Dark gray border
-
-        # Add text options inside the menu
-        option1 = QGraphicsSimpleTextItem("Option 1", self.menu_group)
-        option2 = QGraphicsSimpleTextItem("Option 2", self.menu_group)
-        option1.setPos(10, 10)
-        option2.setPos(10, 30)
-
-        # Position the menu below the object
-        menu_position = QPointF(self.rect().center().x() - 60, self.rect().bottom() + 10)
-        scene_position = self.mapToScene(menu_position)  # Convert local position to scene coordinates
-        self.menu_group.setPos(scene_position)
-
-        # Add the menu to the scene
-        if self.scene():
-            self.scene().addItem(self.menu_group)
-
-        # Debugging output
-        print("Menu created at position:", scene_position)
-
-        super().mouseDoubleClickEvent(event)  # Call the base class method
+        """Show the properties menu in the main window's properties dock."""
+        position = self.scenePos()
+        properties = {
+            "Name": self.name,
+            "X": f"{position.x():.2f}",
+            "Y": f"{position.y():.2f}",
+        }
+        self.main_window.show_properties(properties)
+        super().mouseDoubleClickEvent(event)
 
     def mousePressEvent(self, event: QMouseEvent):
         """Remove the menu if the object is clicked."""

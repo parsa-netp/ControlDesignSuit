@@ -3,7 +3,8 @@ sys.path.append(r'D:\Develop\Python\Pycharm\ControlDesignSuit\Handlers')
 
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QTreeWidget, QTreeWidgetItem
-  , QDockWidget, QGroupBox,QWidget, QMenuBar,QMenu,QMessageBox
+  , QDockWidget, QGroupBox,QWidget, QMenuBar,QMenu,QMessageBox,QLabel,QGridLayout,QPushButton,QWidgetAction
+,QToolBar
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QTransform
@@ -18,15 +19,15 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Control Design Suit")
-        self.resize(1920 , 1080)
+        self.resize(1920, 1080)  # or any custom size you prefer
 
-        # Create a central widget with a vertical layout
+        # Optionally maximize the window after resizing
+        self.showMaximized()        # Create a central widget with a vertical layout
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
 
         # Graphics view and scene for the 2D plane
-
         self.view = PageHandler()
 
         main_layout.addWidget(self.view)
@@ -36,10 +37,20 @@ class MainWindow(QMainWindow):
         # Create the top menu bar
         self.create_menu_bar()
 
+        self.create_tool_bar()
         # Create dock widget for the left sidebar
-        dock_widget = QDockWidget("Options", self)
-        dock_widget.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-        self.addDockWidget(Qt.LeftDockWidgetArea, dock_widget)
+        self.function_dock = QDockWidget("Options", self)
+        self.function_dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.function_dock)
+        self.function_dock.setMinimumSize(300, 400)
+        self.function_dock.setMaximumSize(800, 1200)
+
+        # Create dock widget for the right sidebar
+        self.properties_dock = QDockWidget("Properties", self)
+        self.properties_dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.properties_dock)
+        self.properties_dock.setMinimumSize(300, 400)
+        self.properties_dock.setMaximumSize(800, 1200)
 
         # Create a sidebar widget with layout
         sidebar_widget = QGroupBox()
@@ -54,7 +65,7 @@ class MainWindow(QMainWindow):
         self.add_sections_to_tree()
 
         # Set sidebar as dock widget's main content
-        dock_widget.setWidget(sidebar_widget)
+        self.function_dock.setWidget(sidebar_widget)
 
         # Connect tree item clicks to add items to the 2D plane
         self.tree_widget.itemClicked.connect(self.on_item_clicked)
@@ -99,7 +110,7 @@ class MainWindow(QMainWindow):
         visible_area = self.get_viewport_scene_rect()
         center = visible_area.center()
 
-        rect = ObjectHandler(center.x() - 50, center.y() - 25, 100, 50, QColor("lightblue"), name)
+        rect = ObjectHandler(center.x() - 50, center.y() - 25, 100, 50, QColor("lightblue"), name,self)
         self.view.scene.addItem(rect)
 
     def add_circle(self, item):
@@ -108,7 +119,7 @@ class MainWindow(QMainWindow):
         visible_area = self.get_viewport_scene_rect()
         center = visible_area.center()
 
-        ellipse = ObjectHandler(center.x() - 25, center.y() - 25, 50, 50, QColor("lightgreen"), name)
+        ellipse = ObjectHandler(center.x() - 25, center.y() - 25, 50, 50, QColor("lightgreen"), name,self)
         ellipse.setRect(-25, -25, 50, 50)  # Center the ellipse
         self.view.scene.addItem(ellipse)
 
@@ -118,7 +129,7 @@ class MainWindow(QMainWindow):
         visible_area = self.get_viewport_scene_rect()
         center = visible_area.center()
 
-        rect = ObjectHandler(center.x() - 60, center.y() - 30, 120, 60, QColor("lightcoral"), name)
+        rect = ObjectHandler(center.x() - 60, center.y() - 30, 120, 60, QColor("lightcoral"), name,self)
         self.view.scene.addItem(rect)
 
     def get_viewport_scene_rect(self):
@@ -144,8 +155,19 @@ class MainWindow(QMainWindow):
         object_menu = QMenu("Objects", self)
         menu_bar.addMenu(object_menu)
 
-        show_objects_action = object_menu.addAction("Show Objects Info")
-        show_objects_action.triggered.connect(self.show_objects_info)
+    def toggle_properties(self):
+        """Toggle the visibility of the Properties dock widget."""
+        if self.properties_dock.isVisible():
+            self.properties_dock.hide()
+        else:
+            self.properties_dock.show()
+
+    def toggle_options(self):
+        """Toggle the visibility of the Options dock widget."""
+        if self.function_dock.isVisible():
+            self.function_dock.hide()
+        else:
+            self.function_dock.show()
 
     def show_objects_info(self):
         # Retrieve object information from the scene
@@ -178,7 +200,64 @@ class MainWindow(QMainWindow):
         # Display the information in a message box
         QMessageBox.information(self, "Scene Items", message)
 
-if __name__ == "__main__":
+    def show_properties(self, properties):
+        """Update the properties dock with the given properties."""
+        # Clear the existing content in the properties dock
+        widget = QWidget()
+        layout = QGridLayout(widget)
+        layout.setSpacing(10)  # Add some spacing between rows
+        layout.setContentsMargins(10, 10, 10, 10)  # Add margins for better visuals
+
+        # Add headers for "Property" and "Value"
+        header_property = QLabel("<b>Property</b>")
+        header_value = QLabel("<b>Value</b>")
+        layout.addWidget(header_property, 0, 0)
+        layout.addWidget(header_value, 0, 1)
+
+        # Add properties in a grid layout
+        for row, (key, value) in enumerate(properties.items(), start=1):
+            property_label = QLabel(f"{key}:")
+            value_label = QLabel(f"{value}")
+
+            # Use bold for property names
+            property_label.setStyleSheet("font-weight: bold;")
+            value_label.setStyleSheet("color: #333;")  # Subtle color for values
+
+            layout.addWidget(property_label, row, 0)
+            layout.addWidget(value_label, row, 1)
+
+        # Set the layout and apply it to the dock widget
+        widget.setLayout(layout)
+        self.properties_dock.setWidget(widget)
+
+    def create_tool_bar(self):
+          # Create a toolbar
+          toolbar = QToolBar("Main Toolbar", self)
+
+          # Add actions or widgets to the toolbar
+          self.add_toolbar_buttons(toolbar)
+
+          # Add the toolbar to the main window
+          self.addToolBar(Qt.TopToolBarArea, toolbar)  # Place at the top of the window
+
+    def add_toolbar_buttons(self, toolbar):
+        # Create buttons and add them to the toolbar
+        button1 = QPushButton("Button 1")
+        button1.clicked.connect(self.on_button1_clicked)
+        toolbar.addWidget(button1)
+
+        button2 = QPushButton("Button 2")
+        button2.clicked.connect(self.on_button2_clicked)
+        toolbar.addWidget(button2)
+
+    def on_button1_clicked(self):
+        print("Button 1 clicked")
+
+    def on_button2_clicked(self):
+        print("Button 2 clicked")
+
+
+if   __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()

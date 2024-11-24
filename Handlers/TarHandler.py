@@ -40,5 +40,3 @@ class TarHandler(QGraphicsLineItem):
             super().mousePressEvent(event)
         else:
             super().mousePressEvent(event)
-
-
