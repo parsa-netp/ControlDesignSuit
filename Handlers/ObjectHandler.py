@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QGraphicsRectItem, QGraphicsTextItem
 )
-from PySide6.QtGui import QColor, QBrush, QFont, QPen, QMouseEvent
+from PySide6.QtGui import QColor, QBrush, QFont, QPen, QMouseEvent,QPainter
 
 
 class ObjectHandler(QGraphicsRectItem):
@@ -14,12 +14,14 @@ class ObjectHandler(QGraphicsRectItem):
         self.normal_color = color
         self.highlight_color = QColor(255, 255, 0, 128)  # Highlight color
         self.border_color = QColor(0, 0, 0)  # Border color
+        self.corner_radius = 50  # Radius of the rounded corners
 
         # Set the appearance
         self.setBrush(QBrush(self.normal_color))  # Set color for the object
         self.setPen(QPen(self.border_color, 2))  # Set the border for the object
         self.setFlag(QGraphicsRectItem.ItemIsMovable | QGraphicsRectItem.ItemIsSelectable)
         self.setAcceptHoverEvents(True)  # Enable hover events
+
 
         # Add the name text inside the object
         self.name = name

@@ -1,5 +1,5 @@
 import sys
-sys.path.append(r'D:\Develop\Python\Pycharm\ControlDesignSuit\Handlers')
+sys.path.append(r'D:\Develop\Python\Pycharm\ControlDesignSystems\Handlers')
 
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QTreeWidget, QTreeWidgetItem
@@ -18,7 +18,7 @@ from Handlers.TarHandler import TarHandler
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Control Design Suit")
+        self.setWindowTitle("Control Design Systems")
         self.resize(1920, 1080)  # or any custom size you prefer
 
         # Optionally maximize the window after resizing
