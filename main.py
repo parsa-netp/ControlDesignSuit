@@ -3,12 +3,11 @@ sys.path.append(r'D:\Develop\Python\Pycharm\ControlDesignSystems\Handlers')
 
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QTreeWidget, QTreeWidgetItem
-  , QDockWidget, QGroupBox,QWidget, QMenuBar,QMenu,QMessageBox,QLabel,QGridLayout,QPushButton,QWidgetAction
+  , QDockWidget, QGroupBox,QWidget, QMenuBar,QMenu,QMessageBox,QLabel,QGridLayout,QPushButton
 ,QToolBar
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QTransform
-
 
 from Handlers.PageHandler import PageHandler
 from Handlers.ObjectHandler import  ObjectHandler
@@ -70,6 +69,9 @@ class MainWindow(QMainWindow):
         # Connect tree item clicks to add items to the 2D plane
         self.tree_widget.itemClicked.connect(self.on_item_clicked)
 
+
+
+    # dock option sections
     def add_sections_to_tree(self):
         # Create sections and subsections
         section1 = QTreeWidgetItem(["Section 1"])
@@ -132,12 +134,36 @@ class MainWindow(QMainWindow):
         rect = ObjectHandler(center.x() - 60, center.y() - 30, 120, 60, QColor("lightcoral"), name,self)
         self.view.scene.addItem(rect)
 
-    def get_viewport_scene_rect(self):
-        # Map the view's visible rectangle to the scene coordinates
-        view_rect = self.view.viewport().rect()
-        scene_rect = self.view.mapToScene(view_rect).boundingRect()
-        return scene_rect
+    # creating a box create toolbar and there functions
+    def create_tool_bar(self):
+          # Create a toolbar
+          toolbar = QToolBar("Main Toolbar", self)
 
+          # Add actions or widgets to the toolbar
+          # Create buttons and add them to the toolbar
+          button1 = QPushButton("Button 1")
+          button1.clicked.connect(self.on_button1_clicked)
+          toolbar.addWidget(button1)
+
+          button2 = QPushButton("Button 2")
+          button2.clicked.connect(self.on_button2_clicked)
+          toolbar.addWidget(button2)
+          # Add the toolbar to the main window
+          self.addToolBar(Qt.TopToolBarArea, toolbar)  # Place at the top of the window
+
+    def on_button1_clicked(self):
+        if self.properties_dock.isVisible():
+            self.properties_dock.hide()
+        else:
+            self.properties_dock.show()
+
+    def on_button2_clicked(self):
+        if self.function_dock.isVisible():
+            self.function_dock.hide()
+        else:
+            self.function_dock.show()
+
+    # creating a box create menu bar and there functions
     def create_menu_bar(self):
         # Create a top menu bar with options
         menu_bar = QMenuBar(self)
@@ -154,51 +180,6 @@ class MainWindow(QMainWindow):
 
         object_menu = QMenu("Objects", self)
         menu_bar.addMenu(object_menu)
-
-    def toggle_properties(self):
-        """Toggle the visibility of the Properties dock widget."""
-        if self.properties_dock.isVisible():
-            self.properties_dock.hide()
-        else:
-            self.properties_dock.show()
-
-    def toggle_options(self):
-        """Toggle the visibility of the Options dock widget."""
-        if self.function_dock.isVisible():
-            self.function_dock.hide()
-        else:
-            self.function_dock.show()
-
-    def show_objects_info(self):
-        # Retrieve object information from the scene
-        object_info = []
-        line_info = []
-
-        # Iterate over all items in the scene, sorted by their Z-value
-        for item in sorted(self.view.scene().items(), key=lambda i: i.zValue()):
-            if isinstance(item, ObjectHandler):
-                name = item.name
-                position = item.scenePos()
-                object_info.append(f"{name} at ({position.x():.2f}, {position.y():.2f})")
-            elif isinstance(item, TarHandler):
-                start = item.start_point
-                end = item.end_point
-                line_info.append(f"Line from ({start.x():.2f}, {start.y():.2f}) to ({end.x():.2f}, {end.y():.2f})")
-
-        # Combine the information
-        info = []
-        if object_info:
-            info.append("Objects in the scene:")
-            info.extend(object_info)
-        if line_info:
-            info.append("Lines in the scene:")
-            info.extend(line_info)
-
-        # Format the message
-        message = "\n".join(info) if info else "No objects or lines in the scene."
-
-        # Display the information in a message box
-        QMessageBox.information(self, "Scene Items", message)
 
     def show_properties(self, properties):
         """Update the properties dock with the given properties."""
@@ -230,32 +211,43 @@ class MainWindow(QMainWindow):
         widget.setLayout(layout)
         self.properties_dock.setWidget(widget)
 
-    def create_tool_bar(self):
-          # Create a toolbar
-          toolbar = QToolBar("Main Toolbar", self)
+    # used functions
+    def get_viewport_scene_rect(self):
+        # Map the view's visible rectangle to the scene coordinates
+        view_rect = self.view.viewport().rect()
+        scene_rect = self.view.mapToScene(view_rect).boundingRect()
+        return scene_rect
 
-          # Add actions or widgets to the toolbar
-          self.add_toolbar_buttons(toolbar)
+    def show_objects_info(self):
+        # Retrieve object information from the scene
+        object_info = []
+        line_info = []
 
-          # Add the toolbar to the main window
-          self.addToolBar(Qt.TopToolBarArea, toolbar)  # Place at the top of the window
+        # Iterate over all items in the scene, sorted by their Z-value
+        for item in sorted(self.view.scene().items(), key=lambda i: i.zValue()):
+            if isinstance(item, ObjectHandler):
+                name = item.name
+                position = item.scenePos()
+                object_info.append(f"{name} at ({position.x():.2f}, {position.y():.2f})")
+            elif isinstance(item, TarHandler):
+                start = item.start_point
+                end = item.end_point
+                line_info.append(f"Line from ({start.x():.2f}, {start.y():.2f}) to ({end.x():.2f}, {end.y():.2f})")
 
-    def add_toolbar_buttons(self, toolbar):
-        # Create buttons and add them to the toolbar
-        button1 = QPushButton("Button 1")
-        button1.clicked.connect(self.on_button1_clicked)
-        toolbar.addWidget(button1)
+        # Combine the information
+        info = []
+        if object_info:
+            info.append("Objects in the scene:")
+            info.extend(object_info)
+        if line_info:
+            info.append("Lines in the scene:")
+            info.extend(line_info)
 
-        button2 = QPushButton("Button 2")
-        button2.clicked.connect(self.on_button2_clicked)
-        toolbar.addWidget(button2)
+        # Format the message
+        message = "\n".join(info) if info else "No objects or lines in the scene."
 
-    def on_button1_clicked(self):
-        print("Button 1 clicked")
-
-    def on_button2_clicked(self):
-        print("Button 2 clicked")
-
+        # Display the information in a message box
+        QMessageBox.information(self, "Scene Items", message)
 
 if   __name__ == "__main__":
     app = QApplication(sys.argv)

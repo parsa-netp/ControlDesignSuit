@@ -5,6 +5,10 @@ from PySide6.QtGui import (QColor, QBrush, QTransform, QKeyEvent,QMouseEvent,QPe
 from Handlers.ObjectHandler import  ObjectHandler
 from Handlers.TarHandler import TarHandler
 
+
+from OpenGL.GL import *
+
+
 class PageHandler(QGraphicsView):
     def __init__(self):
         # Initialize the QGraphicsScene internally
