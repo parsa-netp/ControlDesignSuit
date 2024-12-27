@@ -1,264 +1,389 @@
-import sys
-sys.path.append(r'D:\Develop\Python\Pycharm\ControlDesignSystems\Handlers')
+import contextlib
+import logging
+import threading
 
-from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QTreeWidget, QTreeWidgetItem
-  , QDockWidget, QGroupBox,QWidget, QMenuBar,QMenu,QMessageBox,QLabel,QGridLayout,QPushButton,QWidgetAction
-,QToolBar
-)
+from PySide6.QtGui import QDoubleValidator,QAction,QKeyEvent
+from PySide6.QtWidgets import QApplication, QMainWindow, QDockWidget, QWidget, QVBoxLayout, QLabel, QMenuBar,QLineEdit
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QTransform
+
+import qtpynodeeditor as nodeeditor
+from qtpynodeeditor import (NodeData, NodeDataModel, NodeDataType,NodeValidationState, Port, PortType)
+from qtpynodeeditor.type_converter import TypeConverter
 
 
-from Handlers.PageHandler import PageHandler
-from Handlers.ObjectHandler import  ObjectHandler
-from Handlers.TarHandler import TarHandler
+class CustomFlowView(nodeeditor.FlowView):
+    def __init__(self, scene):
+        super().__init__(scene)
 
-
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Control Design Systems")
-        self.resize(1920, 1080)  # or any custom size you prefer
-
-        # Optionally maximize the window after resizing
-        self.showMaximized()        # Create a central widget with a vertical layout
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout(central_widget)
-
-        # Graphics view and scene for the 2D plane
-        self.view = PageHandler()
-
-        main_layout.addWidget(self.view)
-        self.view.setTransform(QTransform().scale(0.5, 0.5))
-        self.view.setFocus()
-
-        # Create the top menu bar
-        self.create_menu_bar()
-
-        self.create_tool_bar()
-        # Create dock widget for the left sidebar
-        self.function_dock = QDockWidget("Options", self)
-        self.function_dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.function_dock)
-        self.function_dock.setMinimumSize(300, 400)
-        self.function_dock.setMaximumSize(800, 1200)
-
-        # Create dock widget for the right sidebar
-        self.properties_dock = QDockWidget("Properties", self)
-        self.properties_dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.properties_dock)
-        self.properties_dock.setMinimumSize(300, 400)
-        self.properties_dock.setMaximumSize(800, 1200)
-
-        # Create a sidebar widget with layout
-        sidebar_widget = QGroupBox()
-        sidebar_layout = QVBoxLayout(sidebar_widget)
-
-        # Tree widget for sections and subsections
-        self.tree_widget = QTreeWidget()
-        self.tree_widget.setHeaderHidden(True)
-        sidebar_layout.addWidget(self.tree_widget)
-
-        # Add sections and subsections
-        self.add_sections_to_tree()
-
-        # Set sidebar as dock widget's main content
-        self.function_dock.setWidget(sidebar_widget)
-
-        # Connect tree item clicks to add items to the 2D plane
-        self.tree_widget.itemClicked.connect(self.on_item_clicked)
-
-    def add_sections_to_tree(self):
-        # Create sections and subsections
-        section1 = QTreeWidgetItem(["Section 1"])
-        section2 = QTreeWidgetItem(["Section 2"])
-        section3 = QTreeWidgetItem(["Section 3"])
-
-        for i in range(1, 4):
-            subsection = QTreeWidgetItem([f"Add Rectangle {i}"])
-            section1.addChild(subsection)
-
-        for i in range(1, 3):
-            subsection = QTreeWidgetItem([f"Add Circle {i}"])
-            section2.addChild(subsection)
-
-        for i in range(1, 5):
-            subsection = QTreeWidgetItem([f"Add Custom Shape {i}"])
-            section3.addChild(subsection)
-
-        self.tree_widget.addTopLevelItem(section1)
-        self.tree_widget.addTopLevelItem(section2)
-        self.tree_widget.addTopLevelItem(section3)
-
-        # Expand all sections by default
-        self.tree_widget.expandAll()
-
-    def on_item_clicked(self, item):
-        # When a subsection is clicked, add a new shape to the scene
-        text = item.text(0)
-        if "Rectangle" in text:
-            self.add_rectangle(item)
-        elif "Circle" in text:
-            self.add_circle(item)
-        elif "Custom Shape" in text:
-            self.add_custom_shape(item)
-
-    def add_rectangle(self, item):
-        name = item.text(0)
-        visible_area = self.get_viewport_scene_rect()
-        center = visible_area.center()
-
-        rect = ObjectHandler(center.x() - 50, center.y() - 25, 100, 50, QColor("lightblue"), name,self)
-        self.view.scene.addItem(rect)
-
-    def add_circle(self, item):
-        name = item.text(0)
-
-        visible_area = self.get_viewport_scene_rect()
-        center = visible_area.center()
-
-        ellipse = ObjectHandler(center.x() - 25, center.y() - 25, 50, 50, QColor("lightgreen"), name,self)
-        ellipse.setRect(-25, -25, 50, 50)  # Center the ellipse
-        self.view.scene.addItem(ellipse)
-
-    def add_custom_shape(self, item):
-        name = item.text(0)
-
-        visible_area = self.get_viewport_scene_rect()
-        center = visible_area.center()
-
-        rect = ObjectHandler(center.x() - 60, center.y() - 30, 120, 60, QColor("lightcoral"), name,self)
-        self.view.scene.addItem(rect)
-
-    def get_viewport_scene_rect(self):
-        # Map the view's visible rectangle to the scene coordinates
-        view_rect = self.view.viewport().rect()
-        scene_rect = self.view.mapToScene(view_rect).boundingRect()
-        return scene_rect
-
-    def create_menu_bar(self):
-        # Create a top menu bar with options
-        menu_bar = QMenuBar(self)
-        self.setMenuBar(menu_bar)
-
-        file_menu = QMenu("File", self)
-        menu_bar.addMenu(file_menu)
-
-        edit_menu = QMenu("Edit", self)
-        menu_bar.addMenu(edit_menu)
-
-        view_menu = QMenu("View", self)
-        menu_bar.addMenu(view_menu)
-
-        object_menu = QMenu("Objects", self)
-        menu_bar.addMenu(object_menu)
-
-    def toggle_properties(self):
-        """Toggle the visibility of the Properties dock widget."""
-        if self.properties_dock.isVisible():
-            self.properties_dock.hide()
+    def keyPressEvent(self, event: QKeyEvent):
+        key = event.key()
+        if key == Qt.Key_Plus:
+            self.scale(1.2, 1.2)  # Zoom in
+        elif key == Qt.Key_Minus:
+            self.scale(1 / 1.2, 1 / 1.2)  # Zoom out
+        elif key == Qt.Key_Delete:
+            self.delete_selected_items()
         else:
-            self.properties_dock.show()
+            super().keyPressEvent(event)
 
-    def toggle_options(self):
-        """Toggle the visibility of the Options dock widget."""
-        if self.function_dock.isVisible():
-            self.function_dock.hide()
+    def delete_selected_items(self):
+        # Implement the logic to delete selected items from the scene
+        for item in self.scene().selectedItems():
+            self.scene().removeItem(item)
+
+
+
+class DecimalData(NodeData):
+    data_type = NodeDataType("decimal", "Decimal")
+
+    def __init__(self, number: float = 0.0):
+        self._number = number
+        self._lock = threading.RLock()
+
+    @property
+    def lock(self):
+        return self._lock
+
+    @property
+    def number(self) -> float:
+        return self._number
+
+    def number_as_text(self) -> str:
+        return '%g' % self._number
+
+
+class IntegerData(NodeData):
+    data_type = NodeDataType("integer", "Integer")
+
+    def __init__(self, number: int = 0):
+        self._number = number
+        self._lock = threading.RLock()
+
+    @property
+    def lock(self):
+        return self._lock
+
+    @property
+    def number(self) -> int:
+        return self._number
+
+    def number_as_text(self) -> str:
+        return str(self._number)
+
+
+class MathOperationDataModel(NodeDataModel):
+    caption_visible = True
+    num_ports = {
+        'input': 2,
+        'output': 1,
+    }
+    port_caption_visible = True
+    data_type = DecimalData.data_type
+
+    def __init__(self, style=None, parent=None):
+        super().__init__(style=style, parent=parent)
+        self._number1 = None
+        self._number2 = None
+        self._result = None
+        self._validation_state = NodeValidationState.warning
+        self._validation_message = 'Uninitialized'
+
+    @property
+    def caption(self):
+        return self.name
+
+    def _check_inputs(self):
+        number1_ok = (self._number1 is not None and
+                      self._number1.data_type.id in ('decimal', 'integer'))
+        number2_ok = (self._number2 is not None and
+                      self._number2.data_type.id in ('decimal', 'integer'))
+
+        if not number1_ok or not number2_ok:
+            self._validation_state = NodeValidationState.warning
+            self._validation_message = "Missing or incorrect inputs"
+            self._result = None
+            self.data_updated.emit(0)
+            return False
+
+        self._validation_state = NodeValidationState.valid
+        self._validation_message = ''
+        return True
+
+    @contextlib.contextmanager
+    def _compute_lock(self):
+        if not self._number1 or not self._number2:
+            raise RuntimeError('inputs unset')
+
+        with self._number1.lock:
+            with self._number2.lock:
+                yield
+
+        self.data_updated.emit(0)
+
+    def out_data(self, port: int) -> NodeData:
+        return self._result
+
+    def set_in_data(self, data: NodeData, port: Port):
+        if port.index == 0:
+            self._number1 = data
+        elif port.index == 1:
+            self._number2 = data
+
+        if self._check_inputs():
+            with self._compute_lock():
+                self.compute()
+
+    def validation_state(self) -> NodeValidationState:
+        return self._validation_state
+
+    def validation_message(self) -> str:
+        return self._validation_message
+
+    def compute(self):
+        pass
+
+
+class AdditionModel(MathOperationDataModel):
+    name = "Addition"
+
+    def compute(self):
+        self._result = DecimalData(self._number1.number + self._number2.number)
+
+
+class DivisionModel(MathOperationDataModel):
+    name = "Division"
+    port_caption = {'input': {0: 'Dividend',
+                              1: 'Divisor',
+                              },
+                    'output': {0: 'Result'},
+                    }
+
+    def compute(self):
+        if self._number2.number == 0.0:
+            self._validation_state = NodeValidationState.error
+            self._validation_message = "Division by zero error"
+            self._result = None
         else:
-            self.function_dock.show()
-
-    def show_objects_info(self):
-        # Retrieve object information from the scene
-        object_info = []
-        line_info = []
-
-        # Iterate over all items in the scene, sorted by their Z-value
-        for item in sorted(self.view.scene().items(), key=lambda i: i.zValue()):
-            if isinstance(item, ObjectHandler):
-                name = item.name
-                position = item.scenePos()
-                object_info.append(f"{name} at ({position.x():.2f}, {position.y():.2f})")
-            elif isinstance(item, TarHandler):
-                start = item.start_point
-                end = item.end_point
-                line_info.append(f"Line from ({start.x():.2f}, {start.y():.2f}) to ({end.x():.2f}, {end.y():.2f})")
-
-        # Combine the information
-        info = []
-        if object_info:
-            info.append("Objects in the scene:")
-            info.extend(object_info)
-        if line_info:
-            info.append("Lines in the scene:")
-            info.extend(line_info)
-
-        # Format the message
-        message = "\n".join(info) if info else "No objects or lines in the scene."
-
-        # Display the information in a message box
-        QMessageBox.information(self, "Scene Items", message)
-
-    def show_properties(self, properties):
-        """Update the properties dock with the given properties."""
-        # Clear the existing content in the properties dock
-        widget = QWidget()
-        layout = QGridLayout(widget)
-        layout.setSpacing(10)  # Add some spacing between rows
-        layout.setContentsMargins(10, 10, 10, 10)  # Add margins for better visuals
-
-        # Add headers for "Property" and "Value"
-        header_property = QLabel("<b>Property</b>")
-        header_value = QLabel("<b>Value</b>")
-        layout.addWidget(header_property, 0, 0)
-        layout.addWidget(header_value, 0, 1)
-
-        # Add properties in a grid layout
-        for row, (key, value) in enumerate(properties.items(), start=1):
-            property_label = QLabel(f"{key}:")
-            value_label = QLabel(f"{value}")
-
-            # Use bold for property names
-            property_label.setStyleSheet("font-weight: bold;")
-            value_label.setStyleSheet("color: #333;")  # Subtle color for values
-
-            layout.addWidget(property_label, row, 0)
-            layout.addWidget(value_label, row, 1)
-
-        # Set the layout and apply it to the dock widget
-        widget.setLayout(layout)
-        self.properties_dock.setWidget(widget)
-
-    def create_tool_bar(self):
-          # Create a toolbar
-          toolbar = QToolBar("Main Toolbar", self)
-
-          # Add actions or widgets to the toolbar
-          self.add_toolbar_buttons(toolbar)
-
-          # Add the toolbar to the main window
-          self.addToolBar(Qt.TopToolBarArea, toolbar)  # Place at the top of the window
-
-    def add_toolbar_buttons(self, toolbar):
-        # Create buttons and add them to the toolbar
-        button1 = QPushButton("Button 1")
-        button1.clicked.connect(self.on_button1_clicked)
-        toolbar.addWidget(button1)
-
-        button2 = QPushButton("Button 2")
-        button2.clicked.connect(self.on_button2_clicked)
-        toolbar.addWidget(button2)
-
-    def on_button1_clicked(self):
-        print("Button 1 clicked")
-
-    def on_button2_clicked(self):
-        print("Button 2 clicked")
+            self._validation_state = NodeValidationState.valid
+            self._validation_message = ''
+            self._result = DecimalData(self._number1.number / self._number2.number)
 
 
-if   __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec())
+class ModuloModel(MathOperationDataModel):
+    name = 'Modulo'
+    data_type = IntegerData.data_type
+    port_caption = {'input': {0: 'Dividend',
+                              1: 'Divisor',
+                              },
+                    'output': {0: 'Result'},
+                    }
+
+    def compute(self):
+        if self._number2.number == 0.0:
+            self._validation_state = NodeValidationState.error
+            self._validation_message = "Division by zero error"
+            self._result = None
+        else:
+            self._result = IntegerData(self._number1.number % self._number2.number)
+
+
+class MultiplicationModel(MathOperationDataModel):
+    name = 'Multiplication'
+    port_caption = {'input': {0: 'A',
+                              1: 'B',
+                              },
+                    'output': {0: 'Result'},
+                    }
+
+    def compute(self):
+        self._result = DecimalData(self._number1.number * self._number2.number)
+
+
+class NumberSourceDataModel(NodeDataModel):
+    name = "NumberSource"
+    caption_visible = False
+    num_ports = {PortType.input: 0,
+                 PortType.output: 1,
+                 }
+    port_caption = {'output': {0: 'Result'}}
+    data_type = DecimalData.data_type
+
+    def __init__(self, style=None, parent=None):
+        super().__init__(style=style, parent=parent)
+        self._number = None
+        self._line_edit = QLineEdit()
+        self._line_edit.setValidator(QDoubleValidator())
+        self._line_edit.setMaximumSize(self._line_edit.sizeHint())
+        self._line_edit.textChanged.connect(self.on_text_edited)
+        self._line_edit.setText("0.0")
+
+    @property
+    def number(self):
+        return self._number
+
+    def save(self) -> dict:
+        doc = super().save()
+        if self._number:
+            doc['number'] = self._number.number
+        return doc
+
+    def restore(self, state: dict):
+        try:
+            value = float(state["number"])
+        except Exception:
+            ...
+        else:
+            self._number = DecimalData(value)
+            self._line_edit.setText(self._number.number_as_text())
+
+    def out_data(self, port: int) -> NodeData:
+        return self._number
+
+    def embedded_widget(self) -> QWidget:
+        return self._line_edit
+
+    def on_text_edited(self, string: str):
+        try:
+            number = float(self._line_edit.text())
+        except ValueError:
+            self._data_invalidated.emit(0)
+        else:
+            self._number = DecimalData(number)
+            self.data_updated.emit(0)
+
+
+class NumberDisplayModel(NodeDataModel):
+    name = "NumberDisplay"
+    data_type = DecimalData.data_type
+    caption_visible = False
+    num_ports = {PortType.input: 1,
+                 PortType.output: 0,
+                 }
+    port_caption = {'input': {0: 'Number'}}
+
+    def __init__(self, style=None, parent=None):
+        super().__init__(style=style, parent=parent)
+        self._number = None
+        self._label = QLabel()
+        self._label.setMargin(3)
+        self._validation_state = NodeValidationState.warning
+        self._validation_message = 'Uninitialized'
+
+    def set_in_data(self, data: NodeData, port: Port):
+        self._number = data
+        number_ok = (self._number is not None and
+                     self._number.data_type.id in ('decimal', 'integer'))
+
+        if number_ok:
+            self._validation_state = NodeValidationState.valid
+            self._validation_message = ''
+            self._label.setText(self._number.number_as_text())
+        else:
+            self._validation_state = NodeValidationState.warning
+            self._validation_message = "Missing or incorrect inputs"
+            self._label.clear()
+
+        self._label.adjustSize()
+
+    def embedded_widget(self) -> QWidget:
+        return self._label
+
+
+class SubtractionModel(MathOperationDataModel):
+    name = "Subtraction"
+    port_caption = {'input': {0: 'Minuend',
+                              1: 'Subtrahend'},
+                    'output': {0: 'Result'}, }
+
+    def compute(self):
+        self._result = DecimalData(self._number1.number - self._number2.number)
+
+
+def integer_to_decimal_converter(data: IntegerData) -> DecimalData:
+    return DecimalData(float(data.number))
+
+
+def decimal_to_integer_converter(data: DecimalData) -> IntegerData:
+    return IntegerData(int(data.number))
+
+
+def main(app):
+
+    registry = nodeeditor.DataModelRegistry()
+
+    # Register models with style directly
+    Operations = (AdditionModel, DivisionModel, ModuloModel,
+                  MultiplicationModel,SubtractionModel, NumberDisplayModel)
+
+    input_data = (NumberSourceDataModel,)
+
+    output_data = (NumberDisplayModel,)
+
+    for Operations in Operations:
+        registry.register_model(Operations, category='Operations', style=None)
+
+    for input_data in input_data:
+        registry.register_model(input_data, category='Input', style=None)
+
+    for output_data in output_data:
+        registry.register_model(output_data, category='OutPut', style=None)
+
+    # Register type converters
+    dec_converter = TypeConverter(DecimalData.data_type, IntegerData.data_type, decimal_to_integer_converter)
+    int_converter = TypeConverter(IntegerData.data_type, DecimalData.data_type, integer_to_decimal_converter)
+
+    registry.register_type_converter(DecimalData.data_type, IntegerData.data_type, dec_converter)
+    registry.register_type_converter(IntegerData.data_type, DecimalData.data_type, int_converter)
+
+    # Create scene and view
+    scene = nodeeditor.FlowScene(registry=registry)
+    view = CustomFlowView(scene)
+
+    # Create the main window
+    Main_Window = QMainWindow()
+    Main_Window.setWindowTitle("Node Editor with Dockable Menu")
+
+    # Set the view as the central widget
+    Main_Window.setCentralWidget(view)
+
+    # Create a dockable menu
+    dock_widget = QDockWidget("Dockable Menu", Main_Window)
+    dock_widget.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+
+    # Add content to the dockable menu
+    dock_content = QWidget()
+    dock_layout = QVBoxLayout(dock_content)
+    dock_label = QLabel("This is the dockable menu", dock_content)
+    dock_layout.addWidget(dock_label)
+
+    dock_widget.setWidget(dock_content)
+    Main_Window.addDockWidget(Qt.LeftDockWidgetArea, dock_widget)  # Initially docked on the left side
+
+    # Create a menu bar with an action to toggle the docked widget
+    menubar = Main_Window.menuBar()
+    view_menu = menubar.addMenu("View")
+    toggle_action = QAction("Toggle Dock", Main_Window)
+    toggle_action.triggered.connect(lambda: toggle_dock(dock_widget))
+    view_menu.addAction(toggle_action)
+
+    # Show the main window
+    view.setWindowTitle("Calculator")
+    Main_Window.showMaximized()
+    Main_Window.show()
+
+
+    return scene, view, Main_Window
+
+
+def toggle_dock(dock_widget):
+    if dock_widget.isVisible():
+        dock_widget.hide()
+    else:
+        dock_widget.show()
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level='DEBUG')
+    app = QApplication([])
+    scene, view, main_window = main(app)
+    app.exec_()
