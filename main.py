@@ -2,7 +2,8 @@ import contextlib
 import logging
 import threading
 
-from PySide6.QtGui import QDoubleValidator,QAction,QKeyEvent
+from PySide6.QtGui import QDoubleValidator,QAction ,QKeyEvent, QMouseEvent
+
 from PySide6.QtWidgets import QApplication, QMainWindow, QDockWidget, QWidget, QVBoxLayout, QLabel, QMenuBar,QLineEdit
 from PySide6.QtCore import Qt
 
@@ -14,6 +15,8 @@ from qtpynodeeditor.type_converter import TypeConverter
 class CustomFlowView(nodeeditor.FlowView):
     def __init__(self, scene):
         super().__init__(scene)
+        self.is_control_pressed = False  # To track whether Control key is pressed
+        self.setCursor(Qt.ArrowCursor)  # Default cursor
 
     def keyPressEvent(self, event: QKeyEvent):
         key = event.key()
@@ -23,14 +26,44 @@ class CustomFlowView(nodeeditor.FlowView):
             self.scale(1 / 1.2, 1 / 1.2)  # Zoom out
         elif key == Qt.Key_Delete:
             self.delete_selected_items()
+        elif key == Qt.Key_Control:
+            self.is_control_pressed = True  # Track if control key is pressed
+            self.setCursor(Qt.OpenHandCursor)  # Change cursor to hand when control is pressed
         else:
             super().keyPressEvent(event)
+
+    def keyReleaseEvent(self, event: QKeyEvent):
+        if event.key() == Qt.Key_Control:
+            self.is_control_pressed = False  # Reset when control key is released
+            self.setCursor(Qt.ArrowCursor)  # Set back to arrow cursor when control is released
+        else:
+            super().keyReleaseEvent(event)
+
+    def mousePressEvent(self, event: QMouseEvent):
+        # If control is not pressed, block the movement and reset the cursor to arrow
+        if not self.is_control_pressed:
+            self.setCursor(Qt.ArrowCursor)  # Ensure default cursor
+            return  # Disable the drag behavior entirely
+        super().mousePressEvent(event)  # Call parent to allow dragging when control is pressed
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        # Reset cursor to default when control is not pressed
+        if not self.is_control_pressed:
+            self.setCursor(Qt.ArrowCursor)
+            return  # Disable drag release behavior when control is not pressed
+        super().mouseReleaseEvent(event)  # Call parent to allow releasing when control is pressed
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        # Only allow movement if control is pressed, otherwise reset cursor
+        if not self.is_control_pressed:
+            self.setCursor(Qt.ArrowCursor)  # Reset cursor to arrow
+            return  # Block mouse movement behavior
+        super().mouseMoveEvent(event)  # Call parent method to allow mouse movement when control is pressed
 
     def delete_selected_items(self):
         # Implement the logic to delete selected items from the scene
         for item in self.scene().selectedItems():
             self.scene().removeItem(item)
-
 
 
 class DecimalData(NodeData):
