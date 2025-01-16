@@ -6,6 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="4613c584-c77c-4af4-8e69-e102ff450d1c" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Handlers/FlowView.py" beforeDir="false" afterPath="$PROJECT_DIR$/Handlers/FlowView.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -43,20 +44,20 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python.FlowView.executor&quot;: &quot;Run&quot;,
-    &quot;Python.main.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/Develop/Python/Pycharm/ControlDesignSystems/main.py&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.FlowView.executor": "Run",
+    "Python.main.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "D:/Develop/Python/Pycharm/ControlDesignSystems/main.py",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RunManager">
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="ControlDesignSystems" />
@@ -109,7 +110,17 @@
       <workItem from="1736144054236" duration="1771000" />
       <workItem from="1736187550605" duration="3588000" />
       <workItem from="1736256615455" duration="12000" />
-      <workItem from="1736368776440" duration="3514000" />
+      <workItem from="1736368776440" duration="3749000" />
+      <workItem from="1736403338599" duration="895000" />
+      <workItem from="1736411115505" duration="157000" />
+      <workItem from="1736529920102" duration="756000" />
+      <workItem from="1736590078255" duration="1718000" />
+      <workItem from="1736659524212" duration="1178000" />
+      <workItem from="1736832753619" duration="1056000" />
+      <workItem from="1736864461019" duration="20000" />
+      <workItem from="1737006708349" duration="26000" />
+      <workItem from="1737008600257" duration="770000" />
+      <workItem from="1737050275700" duration="3020000" />
     </task>
     <servers />
   </component>
@@ -120,7 +131,7 @@
     <option name="LAST_COMMIT_MESSAGE" value="" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/ControlDesignSystems$main.coverage" NAME="main Coverage Results" MODIFIED="1736372290299" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/ControlDesignSystems$main.coverage" NAME="main Coverage Results" MODIFIED="1737053307629" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
     <SUITE FILE_PATH="coverage/ControlDesignSystems$FlowView.coverage" NAME="FlowView Coverage Results" MODIFIED="1736108448470" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Handlers" />
   </component>
 </project>

@@ -2,27 +2,27 @@ import logging
 import inspect
 
 from PySide6.QtGui import QAction,QDrag
-from PySide6.QtWidgets import QApplication, QMainWindow, QDockWidget, QWidget, QVBoxLayout, QLabel, QMenuBar,QLineEdit,QPushButton,QGridLayout,QHBoxLayout,QComboBox,QTreeWidget,QTreeWidgetItem
+from PySide6.QtWidgets import QApplication, QMainWindow, QDockWidget, QWidget, QVBoxLayout, QLabel, QMenuBar,QLineEdit,QPushButton,QGridLayout,QHBoxLayout,QComboBox,QTreeWidget,QTreeWidgetItem,QGraphicsView
 from PySide6.QtCore import Qt,QMimeData
 
 import qtpynodeeditor as nodeeditor
 from qtpynodeeditor.type_converter import TypeConverter
+from qtpynodeeditor import ConnectionGeometry, StyleCollection
 
-from Handlers.FlowView import CustomFlowView
+
 
 from Data.INPUT.input_number import NumberSourceDataModel
 from Data.OUTPUT.output_number import NumberDisplayModel
 from Data.Type_Convertors import DecimalData,IntegerData
 
 from Main_Operands import Basic_Arithmetic
-
+from Handlers import FlowView
 
 def integer_to_decimal_converter(data: IntegerData) -> DecimalData:
     return DecimalData(float(data.number))
 
 def decimal_to_integer_converter(data: DecimalData) -> IntegerData:
     return IntegerData(int(data.number))
-
 
 def get_classes_from_module(module):
 
@@ -36,7 +36,6 @@ def get_classes_from_module(module):
             class_list.append(name)
 
     return class_list
-
 
 def operation_doc(main_window, custom_flow_view):
     # Retrieve the list of module names from Main_Operands.Basic_Arithmetic
@@ -98,9 +97,45 @@ def handle_item_click(item, custom_flow_view):
     except ModuleNotFoundError:
         print("Error: Module  not found. Check if it exists and is correctly imported.")
 
-
+style_json = '''
+{
+    "FlowViewStyle": {
+        "BackgroundColor": [255, 255, 240],
+        "FineGridColor": [245, 245, 230],
+        "CoarseGridColor": [235, 235, 220]
+    },
+    "NodeStyle": {
+        "NormalBoundaryColor": "darkgray",
+        "SelectedBoundaryColor": "deepskyblue",
+        "GradientColor0": "mintcream",
+        "GradientColor1": "mintcream",
+        "GradientColor2": "mintcream",
+        "GradientColor3": "mintcream",
+        "ShadowColor": [200, 200, 200],
+        "FontColor": [10, 10, 10],
+        "FontColorFaded": [100, 100, 100],
+        "ConnectionPointColor": "white",
+        "PenWidth": 2.0,
+        "HoveredPenWidth": 2.5,
+        "ConnectionPointDiameter": 10.0,
+        "Opacity": 1.0
+    },
+    "ConnectionStyle": {
+        "ConstructionColor": "gray",
+        "NormalColor": "black",
+        "SelectedColor": "gray",
+        "SelectedHaloColor": "deepskyblue",
+        "HoveredColor": "deepskyblue",
+        "LineWidth": 3.0,
+        "ConstructionLineWidth": 2.0,
+        "PointDiameter": 10.0,
+        "UseDataDefinedColors": false
+    }
+}
+'''
 
 def main(app):
+
 
     registry = nodeeditor.DataModelRegistry()
 
@@ -131,7 +166,9 @@ def main(app):
 
     # Create scene and view
     scene = nodeeditor.FlowScene(registry=registry)
-    view = CustomFlowView(scene)
+    view = FlowView.CustomFlowView(scene)
+    view.setDragMode(QGraphicsView.RubberBandDrag)
+
 
     # Create the main window
     Main_Window = QMainWindow()
@@ -150,7 +187,7 @@ def main(app):
     view_menu.addAction(toggle_action)
 
     # Show the main window
-    view.setWindowTitle("Calculator")
+    view.setWindowTitle("view")
     Main_Window.showMaximized()
     Main_Window.show()
 
